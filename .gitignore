@@ -42,3 +42,6 @@ next-env.d.ts
 
 # example env file is safe to commit (no real values)
 !.env.example
+
+# agent worktrees (separate checkouts)
+/.claude/worktrees/
