@@ -1,10 +1,13 @@
+import { safeEqual } from "@/lib/server/access";
 import { getDb } from "@/lib/server/data";
 
 // Daily Vercel Cron ping (R1): one cheap read so the free Supabase project never
 // sits idle for 7 days. Vercel sends `Authorization: Bearer $CRON_SECRET`.
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+  const header = request.headers.get("authorization") ?? "";
+  // A short or placeholder secret (e.g. "replace-me") counts as unset.
+  if (!secret || secret.length < 16 || !safeEqual(header, `Bearer ${secret}`)) {
     return Response.json({ ok: false }, { status: 401 });
   }
   try {

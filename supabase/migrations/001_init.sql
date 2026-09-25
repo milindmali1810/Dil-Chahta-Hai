@@ -3,6 +3,12 @@
 --
 -- Destination rows are NOT inserted here. They come from the hand-checked
 -- destination sheet in a separate migration, 002_destinations.sql.
+-- Write that (and any later sheet edit) as `insert ... on conflict (id) do update`:
+-- never delete or truncate destinations, because decided trips reference them.
+--
+-- The dealbreaker tag list below appears twice (destinations.attributes and
+-- responses.dealbreakers) and must equal DEALBREAKER_TAGS in lib/scoring.ts;
+-- lib/server/guards.test.ts fails if they drift.
 
 -- ---------------------------------------------------------------------------
 -- destinations: the fixed, hand-checked list (about 10 rows).
@@ -11,11 +17,14 @@ create table public.destinations (
   id                  text primary key,
   name                text not null,
   cost_per_person_inr int  not null check (cost_per_person_inr > 0),
-  best_months         int[] not null default '{}'
-                      check (best_months <@ array[1,2,3,4,5,6,7,8,9,10,11,12]),
+  best_months         int[] not null
+                      check (cardinality(best_months) > 0
+                             and best_months <@ array[1,2,3,4,5,6,7,8,9,10,11,12]),
   trip_type           text not null check (trip_type in ('beach', 'hills', 'city', 'adventure')),
   -- Dealbreaker tags this destination carries (see DEALBREAKER_TAGS in lib/scoring.ts).
+  -- A typo here would silently ignore someone's dealbreaker, so reject unknown tags.
   attributes          text[] not null default '{}'
+                      check (attributes <@ array['international', 'trekking', 'overnight_journey']::text[])
 );
 
 -- ---------------------------------------------------------------------------
@@ -26,20 +35,22 @@ create table public.destinations (
 create table public.trips (
   id                   text primary key,
   name                 text not null,
-  participant_names    text[] not null,
+  participant_names    text[] not null
+                       check (cardinality(participant_names) >= 2
+                              and array_position(participant_names, '') is null),
   -- Array of {id, label, start, end}; start/end are YYYY-MM-DD, both inclusive.
   windows              jsonb not null check (jsonb_typeof(windows) = 'array'),
   -- Full date + time, written by the app with a +05:30 (IST) offset (SO-2).
   deadline             timestamptz not null,
   pin                  text not null check (pin ~ '^[0-9]{6}$'),
-  pin_version          int not null default 1,
+  pin_version          int not null default 1 check (pin_version >= 1),
   organiser_token      text not null,
   locked_early         boolean not null default false,
   -- The final choice is stored as destination + window, never as "rank #1" (SO-3).
   -- It is its own block on saving and never touches locked_early (R-3).
   final_destination_id text references public.destinations (id),
   final_window_id      text,
-  failed_pin_tries     int not null default 0,
+  failed_pin_tries     int not null default 0 check (failed_pin_tries >= 0),
   pin_paused_until     timestamptz,
   created_at           timestamptz not null default now(),
   constraint trips_final_pair check ((final_destination_id is null) = (final_window_id is null))
@@ -54,7 +65,8 @@ create table public.responses (
   participant_name     text not null,
   budget_inr           int not null check (budget_inr > 0),
   available_window_ids text[] not null default '{}',
-  dealbreakers         text[] not null default '{}',
+  dealbreakers         text[] not null default '{}'
+                       check (dealbreakers <@ array['international', 'trekking', 'overnight_journey']::text[]),
   trip_type            text not null check (trip_type in ('beach', 'hills', 'city', 'adventure', 'none')),
   device_id            text not null,
   updated_at           timestamptz not null default now(),
@@ -69,6 +81,12 @@ create table public.responses (
 alter table public.destinations enable row level security;
 alter table public.trips        enable row level security;
 alter table public.responses    enable row level security;
+
+-- Explicit table grants, so the schema doesn't depend on project defaults:
+-- the browser-facing roles get nothing; only the server's role can read/write.
+revoke all on public.trips, public.responses, public.destinations from anon, authenticated;
+grant select, insert, update on public.trips, public.responses to service_role;
+grant select on public.destinations to service_role;
 
 -- ---------------------------------------------------------------------------
 -- register_pin_failure: count one wrong PIN in a single atomic UPDATE, so two

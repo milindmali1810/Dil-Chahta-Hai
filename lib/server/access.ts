@@ -218,10 +218,13 @@ export type OrganiserAccess =
   | { ok: false; reason: "no_trip" | "bad_token" };
 
 /** Every organiser page and action starts here (A1). The token comes from the organiser link. */
-export async function requireOrganiser(tripId: string, token: string): Promise<OrganiserAccess> {
+export async function requireOrganiser(tripId: string, token: unknown): Promise<OrganiserAccess> {
   const trip = await getTrip(tripId);
   if (!trip) return { ok: false, reason: "no_trip" };
-  if (!safeEqual(token, trip.organiserToken)) return { ok: false, reason: "bad_token" };
+  // The token comes from the URL, so it can be missing or an array at runtime.
+  if (typeof token !== "string" || !safeEqual(token, trip.organiserToken)) {
+    return { ok: false, reason: "bad_token" };
+  }
   return { ok: true, trip };
 }
 

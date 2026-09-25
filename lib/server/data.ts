@@ -238,7 +238,8 @@ export type SaveCheck = { ok: true } | { ok: false; reason: "deadline" | "locked
  *  LOCKED → label "Results (locked)"; "Decided: …" banner only when a final choice is set
  */
 export function canSave(trip: LockFields, now: Date): SaveCheck {
-  if (now.getTime() > new Date(trip.deadline).getTime()) return { ok: false, reason: "deadline" };
+  // `!(now <= deadline)` also refuses an unparsable deadline (NaN), so it fails closed.
+  if (!(now.getTime() <= new Date(trip.deadline).getTime())) return { ok: false, reason: "deadline" };
   if (trip.lockedEarly) return { ok: false, reason: "locked" };
   // R-3: a final choice is its own block and never touches lockedEarly.
   if (trip.finalDestinationId !== null || trip.finalWindowId !== null) {

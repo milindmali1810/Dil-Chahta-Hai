@@ -129,6 +129,23 @@ function dayNumber(date: string): number {
   return Date.UTC(y, m - 1, d) / MS_PER_DAY;
 }
 
+/** Longest window we'll score; anything longer is bad data (and would make the day loop slow). */
+const MAX_WINDOW_DAYS = 366;
+
+/**
+ * A window is usable only if both ends are real calendar dates, start ≤ end,
+ * and it spans at most MAX_WINDOW_DAYS. Trip creation validates this too; this
+ * guard keeps bad stored data from producing NaN scores that pass the floor.
+ */
+function isUsableWindow(w: DateWindow): boolean {
+  const isDate = (s: string) =>
+    /^\d{4}-\d{2}-\d{2}$/.test(s) &&
+    new Date(dayNumber(s) * MS_PER_DAY).toISOString().slice(0, 10) === s;
+  if (!isDate(w.start) || !isDate(w.end)) return false;
+  const days = dayNumber(w.end) - dayNumber(w.start) + 1;
+  return days >= 1 && days <= MAX_WINDOW_DAYS;
+}
+
 /** Days in the window (both ends inclusive) and how many of them fall in the best months. */
 function seasonDays(window: DateWindow, bestMonths: number[]) {
   const first = dayNumber(window.start);
@@ -261,14 +278,12 @@ function bestPerDestination(sorted: Candidate[], taken: Set<string>): ShownOptio
 
 /** Scoring rules 1-9 from the design doc. Pure: the same input always gives the same output. */
 export function computeResults(input: ScoringInput): ResultsOutput {
-  const { participants, destinations, windows } = input;
-  const position = (name: string) => {
-    const i = participants.indexOf(name);
-    return i === -1 ? participants.length : i;
-  };
-  const responses = [...input.responses].sort(
-    (a, b) => position(a.name) - position(b.name) || compareText(a.name, b.name),
-  );
+  const { participants, destinations } = input;
+  const windows = input.windows.filter(isUsableWindow);
+  // Only the organiser's participants count; a stray name can't change the ranking or the "N of M" label.
+  const responses = input.responses
+    .filter((r) => participants.includes(r.name))
+    .sort((a, b) => participants.indexOf(a.name) - participants.indexOf(b.name));
 
   const submitted = new Set(responses.map((r) => r.name));
   const missing = participants.filter((p) => !submitted.has(p));
