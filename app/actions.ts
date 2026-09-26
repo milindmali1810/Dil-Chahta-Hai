@@ -79,11 +79,14 @@ function text(x: unknown): string {
   return typeof x === "string" ? x : "";
 }
 
-/** Re-render every page that shows this trip. */
-function revalidateTrip(trip: Trip): void {
+/**
+ * Re-render every page that shows this trip. The organiser page is refreshed by
+ * route pattern, so friend-side code never needs the organiser token to do it.
+ */
+function revalidateTrip(trip: Pick<Trip, "id">): void {
   revalidatePath(`/t/${trip.id}`);
   revalidatePath(`/t/${trip.id}/form`);
-  revalidatePath(`/o/${trip.id}/${trip.organiserToken}`);
+  revalidatePath("/o/[tripId]/[token]", "page");
 }
 
 // ---------------------------------------------------------------------------
@@ -122,9 +125,11 @@ export async function enterPin(tripId: string, pin: string): Promise<Done> {
     if (!trip) return fail(GUARD_MESSAGES.no_trip);
     const parsed = parsePin(pin);
     if (!parsed.ok) return parsed;
-    const result = await checkPin(trip, parsed.value, now);
+    const result = await checkPin(trip.id, parsed.value, now);
+    if (result.outcome === "no_trip") return fail(GUARD_MESSAGES.no_trip);
     if (result.outcome !== "ok") return fail(pinOutcomeMessage(result));
-    await setJoinCookie({ tripId: trip.id, pinVersion: trip.pinVersion, deviceId: newDeviceId() });
+    // pinVersion comes from the same atomic check, so a PIN change mid-request can't mint a stale cookie.
+    await setJoinCookie({ tripId: trip.id, pinVersion: result.pinVersion, deviceId: newDeviceId() });
     return { ok: true };
   } catch {
     return fail("Couldn't check the PIN. Check your connection and try again.");
@@ -259,18 +264,22 @@ export async function unlock(tripId: string, token: string): Promise<Done> {
   }
 }
 
-/** New PIN; old join cookies stop working. Returns the new PIN for re-sharing. */
+/**
+ * New PIN AND new organiser link: old join cookies and the old organiser link stop
+ * working, so this recovers even if the organiser link leaked along with the PIN.
+ * Returns both so the organiser page can show them and move to the new link.
+ */
 export async function regeneratePinAction(
   tripId: string,
   token: string,
-): Promise<{ ok: true; pin: string } | Fail> {
+): Promise<{ ok: true; pin: string; organiserToken: string } | Fail> {
   const access = await requireOrganiser(text(tripId), text(token)).catch(guardError);
   if (!access.ok) return fail(GUARD_MESSAGES[access.reason]);
   try {
-    const updated = await regeneratePin(access.trip, newPin());
+    const updated = await regeneratePin(access.trip, newPin(), newOrganiserToken());
     if (!updated) return fail("Someone else just changed the PIN. Reload to see it.");
     revalidateTrip(updated);
-    return { ok: true, pin: updated.pin };
+    return { ok: true, pin: updated.pin, organiserToken: updated.organiserToken };
   } catch {
     return fail(SAVE_FAILED);
   }

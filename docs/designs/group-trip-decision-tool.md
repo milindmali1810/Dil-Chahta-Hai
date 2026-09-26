@@ -133,6 +133,7 @@ An **option** is one destination plus one candidate date window: 10 destinations
 - **Organiser-only actions** work only from the organiser link: lock early, regenerate the PIN, mark final and change or clear the final choice.
   - **Lock early / unlock.** Locking asks first: "Lock now? Friends can't edit until you unlock." It can be undone with Unlock any time before the deadline.
   - **Regenerate PIN.** This comes from the PRD's risk table ("The organiser can regenerate the PIN") and exists in case the PIN leaks outside the group. Friends whose cookie was issued under the old PIN see the PIN screen again with "The PIN has changed. Ask the organiser for the new one."
+    - **It also issues a new organiser link** (review checkpoint 1, 2026-09-26). The old organiser link stops working, and the new one is shown once, with "Save this link". This way, regenerating recovers even if the organiser link leaked along with the PIN.
   - **Mark final.** Only options shown on the results page (passing or flagged) can be marked final. That's intended: the tool's job is to pick one of the 2-3 shown options.
     - The final choice can be changed or cleared. It never touches the early-lock setting (R-3). Clearing it brings editing back, unless the deadline has passed or the trip is locked early.
   - **How friends see the decision.** Once a final choice is set, a banner at the top of every trip page reads "Decided: Goa, 12-16 Dec". The ranking stays below it, headed "Results (locked)" (R-1), so it's never confused with the decision itself.
@@ -140,7 +141,9 @@ An **option** is one destination plus one candidate date window: 10 destinations
 - **Accepted risks** (a friend who has the PIN can do these; fine for five friends):
   - pick another friend's name and change their answers on purpose;
   - roughly work out someone's budget from their exact score, since fit scores must be shown (FR8) and costs are known;
-  - the builder can see everything in the Supabase dashboard.
+  - the builder can see everything in the Supabase dashboard;
+  - someone holding a leaked trip link could keep PIN entry paused by sending 10 wrong PINs every 15 minutes (the pause is per trip);
+  - a save that starts a split second before the organiser locks or finalises can still land (a window of milliseconds).
 
 ## Data model (the PRD's 3 tables, fields filled in)
 

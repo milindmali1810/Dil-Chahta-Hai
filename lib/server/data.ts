@@ -68,11 +68,6 @@ export interface NewTrip {
   organiserToken: string;
 }
 
-export interface PinFailureState {
-  failedPinTries: number;
-  pinPausedUntil: string | null;
-}
-
 interface TripRow {
   id: string;
   name: string;
@@ -346,19 +341,23 @@ export async function clearFinal(tripId: string): Promise<void> {
 }
 
 /**
- * New PIN, pin_version + 1 (old cookies stop working), tries and pause reset.
+ * New PIN, pin_version + 1 (old cookies stop working), tries and pause reset,
+ * AND a new organiser token (the old organiser link stops working), so this
+ * also recovers from the organiser link leaking along with the PIN.
  * Only applies if pin_version is still the one the caller read, so two
  * regenerations at once can't both win. Returns null if it lost that race.
  */
 export async function regeneratePin(
   trip: Pick<Trip, "id" | "pinVersion">,
   newPin: string,
+  newOrganiserToken: string,
 ): Promise<Trip | null> {
   const { data, error } = await getDb()
     .from("trips")
     .update({
       pin: newPin,
       pin_version: trip.pinVersion + 1,
+      organiser_token: newOrganiserToken,
       failed_pin_tries: 0,
       pin_paused_until: null,
     })
@@ -370,18 +369,47 @@ export async function regeneratePin(
   return data ? tripFromRow(data as TripRow) : null;
 }
 
-/** One atomic increment in Postgres (see register_pin_failure in 001_init.sql). */
-export async function registerPinFailure(tripId: string, now: Date): Promise<PinFailureState> {
-  const { data, error } = await getDb()
-    .rpc("register_pin_failure", { p_trip_id: tripId, p_now: now.toISOString() })
-    .single();
-  if (error) fail("registerPinFailure", error);
-  const row = data as { failed_pin_tries: number; pin_paused_until: string | null };
-  return { failedPinTries: row.failed_pin_tries, pinPausedUntil: row.pin_paused_until };
+/** What the try_pin database function reports about one PIN attempt. */
+export interface PinTry {
+  outcome: "ok" | "wrong" | "paused" | "no_trip";
+  triesLeft: number;
+  pausedUntil: string | null;
+  pinVersion: number;
 }
 
-export async function resetPinTries(tripId: string): Promise<void> {
-  await updateTrip("resetPinTries", tripId, { failed_pin_tries: 0, pin_paused_until: null });
+/**
+ * One PIN attempt, decided atomically in Postgres (see try_pin in 001_init.sql):
+ * pause check, PIN comparison and counter update happen under one row lock.
+ */
+export async function tryPin(
+  tripId: string,
+  pin: string,
+  now: Date,
+  maxTries: number,
+  pauseMinutes: number,
+): Promise<PinTry> {
+  const { data, error } = await getDb()
+    .rpc("try_pin", {
+      p_trip_id: tripId,
+      p_pin: pin,
+      p_now: now.toISOString(),
+      p_max_tries: maxTries,
+      p_pause_minutes: pauseMinutes,
+    })
+    .single();
+  if (error) fail("tryPin", error);
+  const row = data as {
+    outcome: PinTry["outcome"];
+    tries_left: number;
+    paused_until: string | null;
+    pin_version: number;
+  };
+  return {
+    outcome: row.outcome,
+    triesLeft: row.tries_left,
+    pausedUntil: row.paused_until,
+    pinVersion: row.pin_version,
+  };
 }
 
 // ---------------------------------------------------------------------------

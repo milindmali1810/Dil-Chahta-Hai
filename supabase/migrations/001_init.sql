@@ -89,26 +89,68 @@ grant select, insert, update on public.trips, public.responses to service_role;
 grant select on public.destinations to service_role;
 
 -- ---------------------------------------------------------------------------
--- register_pin_failure: count one wrong PIN in a single atomic UPDATE, so two
--- wrong tries at once can't both slip through. On the 10th wrong try it pauses
--- PIN entry for 15 minutes and resets the counter to 0.
+-- try_pin: one PIN attempt, decided entirely inside Postgres.
+-- The row lock (FOR UPDATE) makes attempts on the same trip queue up one at a
+-- time, so a burst of simultaneous guesses can never test more than
+-- p_max_tries PINs before the pause starts, and a correct guess can't clear a
+-- pause that an earlier guess in the burst just set.
+-- The limits are passed in from MAX_PIN_TRIES / PIN_PAUSE_MINUTES in
+-- lib/server/access.ts, so they live in one place.
+-- Returns: outcome ('ok' | 'wrong' | 'paused' | 'no_trip'), tries left,
+-- when the pause ends, and the trip's current pin_version (for the cookie).
 -- ---------------------------------------------------------------------------
-create or replace function public.register_pin_failure(p_trip_id text, p_now timestamptz)
-returns table (failed_pin_tries int, pin_paused_until timestamptz)
-language sql
+create or replace function public.try_pin(
+  p_trip_id       text,
+  p_pin           text,
+  p_now           timestamptz,
+  p_max_tries     int,
+  p_pause_minutes int
+)
+returns table (outcome text, tries_left int, paused_until timestamptz, pin_version int)
+language plpgsql
 security invoker
 set search_path = ''
 as $$
-  update public.trips as t
-     set failed_pin_tries = case when t.failed_pin_tries + 1 >= 10 then 0
-                                 else t.failed_pin_tries + 1 end,
-         pin_paused_until = case when t.failed_pin_tries + 1 >= 10 then p_now + interval '15 minutes'
-                                 else t.pin_paused_until end
-   where t.id = p_trip_id
-  returning t.failed_pin_tries, t.pin_paused_until;
+declare
+  t record;
+begin
+  select tr.pin, tr.pin_version, tr.failed_pin_tries, tr.pin_paused_until
+    into t
+    from public.trips as tr
+   where tr.id = p_trip_id
+     for update;
+
+  if not found then
+    return query select 'no_trip'::text, 0, null::timestamptz, 0;
+    return;
+  end if;
+
+  if t.pin_paused_until is not null and t.pin_paused_until > p_now then
+    return query select 'paused'::text, 0, t.pin_paused_until, t.pin_version;
+    return;
+  end if;
+
+  if t.pin = p_pin then
+    update public.trips as u
+       set failed_pin_tries = 0, pin_paused_until = null
+     where u.id = p_trip_id;
+    return query select 'ok'::text, p_max_tries, null::timestamptz, t.pin_version;
+  elsif t.failed_pin_tries + 1 >= p_max_tries then
+    update public.trips as u
+       set failed_pin_tries = 0,
+           pin_paused_until = p_now + make_interval(mins => p_pause_minutes)
+     where u.id = p_trip_id;
+    return query select 'paused'::text, 0, p_now + make_interval(mins => p_pause_minutes), t.pin_version;
+  else
+    update public.trips as u
+       set failed_pin_tries = t.failed_pin_tries + 1
+     where u.id = p_trip_id;
+    return query select 'wrong'::text, p_max_tries - (t.failed_pin_tries + 1), null::timestamptz, t.pin_version;
+  end if;
+end;
 $$;
 
 -- Functions are executable by PUBLIC by default, and Supabase also grants
 -- anon/authenticated directly, so revoke all three. Only the server calls it.
-revoke execute on function public.register_pin_failure(text, timestamptz) from public, anon, authenticated;
-grant  execute on function public.register_pin_failure(text, timestamptz) to service_role;
+revoke execute on function public.try_pin(text, text, timestamptz, int, int) from public, anon, authenticated;
+grant  execute on function public.try_pin(text, text, timestamptz, int, int) to service_role;

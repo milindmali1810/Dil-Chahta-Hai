@@ -16,7 +16,6 @@ import {
   newOrganiserToken,
   newPin,
   newTripId,
-  pinAttempt,
   safeEqual,
   signPayload,
   switchedPayload,
@@ -166,40 +165,6 @@ describe("formatDeadlineIst", () => {
   });
 });
 
-describe("pinAttempt", () => {
-  const now = new Date("2026-09-26T10:00:00+05:30");
-
-  it("wrong tries 1-9 → wrong, with tries left", () => {
-    for (let before = 0; before < 9; before++) {
-      const a = pinAttempt(trip({ failedPinTries: before }), now, false);
-      expect(a).toEqual({ outcome: "wrong", triesLeft: 10 - (before + 1), action: "register_failure" });
-    }
-  });
-
-  it("the 10th wrong try → paused for 15 minutes", () => {
-    const a = pinAttempt(trip({ failedPinTries: 9 }), now, false);
-    expect(a).toEqual({ outcome: "paused", minutesLeft: 15, action: "register_failure" });
-  });
-
-  it("while paused, even a correct PIN is refused and nothing is written", () => {
-    const paused = trip({ pinPausedUntil: new Date(now.getTime() + 14 * 60_000 + 1).toISOString() });
-    expect(pinAttempt(paused, now, true)).toEqual({ outcome: "paused", minutesLeft: 15, action: "none" });
-    expect(pinAttempt(paused, now, false)).toEqual({ outcome: "paused", minutesLeft: 15, action: "none" });
-    const later = new Date(now.getTime() + 10 * 60_000);
-    expect(pinAttempt(paused, later, true)).toMatchObject({ outcome: "paused", minutesLeft: 5 });
-  });
-
-  it("after the pause ends, a correct PIN → ok and the counter is reset", () => {
-    const paused = trip({ pinPausedUntil: new Date(now.getTime() + 15 * 60_000).toISOString() });
-    const afterPause = new Date(now.getTime() + 15 * 60_000);
-    expect(pinAttempt(paused, afterPause, true)).toEqual({ outcome: "ok", action: "reset" });
-  });
-
-  it("a correct PIN with some wrong tries → ok and reset", () => {
-    expect(pinAttempt(trip({ failedPinTries: 4 }), now, true)).toEqual({ outcome: "ok", action: "reset" });
-  });
-});
-
 describe("signed cookie", () => {
   const SECRET = "test-secret-that-is-at-least-32-characters-long";
   const payload: JoinPayload = { tripId: "trip_abc", pinVersion: 2, name: "Asha", deviceId: "dev1" };
@@ -243,8 +208,10 @@ describe("signed cookie", () => {
       const body = Buffer.from(JSON.stringify(value)).toString("base64url");
       return `${body}.${createHmac("sha256", SECRET).update(body).digest("base64url")}`;
     };
-    // Sanity check: the hand-signed format is accepted when the shape is right.
-    expect(verifyPayload(signed({ tripId: "t", pinVersion: 1, deviceId: "d" }))).not.toBeNull();
+    // Sanity check: the hand-signed format is accepted when the shape is right
+    // (including `iat`, the issue time the server checks for the 60-day expiry).
+    const iat = Math.floor(Date.now() / 1000);
+    expect(verifyPayload(signed({ tripId: "t", pinVersion: 1, deviceId: "d", iat }))).not.toBeNull();
     expect(verifyPayload(signed({ tripId: "t", pinVersion: "1", deviceId: "d" }))).toBeNull();
     expect(verifyPayload(signed({ tripId: "t", pinVersion: 1 }))).toBeNull();
     expect(verifyPayload(signed({ tripId: "t", pinVersion: 1, deviceId: "d", name: 5 }))).toBeNull();

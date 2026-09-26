@@ -450,12 +450,13 @@ describe("enterPin", () => {
     expect(access.checkPin).not.toHaveBeenCalled();
   });
 
-  it("right PIN → cookie with the trip's PIN version, a new device ID and no name", async () => {
-    m(data.getTrip).mockResolvedValue(trip());
-    m(access.checkPin).mockResolvedValue({ outcome: "ok" });
+  it("right PIN → cookie with the PIN version from the atomic check, a new device ID and no name", async () => {
+    m(data.getTrip).mockResolvedValue(trip()); // pinVersion 3 when read...
+    m(access.checkPin).mockResolvedValue({ outcome: "ok", pinVersion: 4 }); // ...4 by the time the PIN was checked
     expect(await actions.enterPin("trip_abc", "042917")).toEqual({ ok: true });
+    expect(access.checkPin).toHaveBeenCalledWith("trip_abc", "042917", expect.any(Date));
     const cookie = m(access.setJoinCookie).mock.calls[0][0];
-    expect(cookie).toEqual({ tripId: "trip_abc", pinVersion: 3, deviceId: expect.any(String) });
+    expect(cookie).toEqual({ tripId: "trip_abc", pinVersion: 4, deviceId: expect.any(String) });
     expect(cookie.deviceId.length).toBeGreaterThanOrEqual(20);
   });
 
@@ -470,6 +471,11 @@ describe("enterPin", () => {
     expect(await actions.enterPin("trip_abc", "111111")).toEqual({
       ok: false,
       message: "Too many wrong tries. Try again in 15 minutes.",
+    });
+    m(access.checkPin).mockResolvedValueOnce({ outcome: "no_trip" });
+    expect(await actions.enterPin("trip_abc", "111111")).toEqual({
+      ok: false,
+      message: "This trip link isn't valid.",
     });
     expect(access.setJoinCookie).not.toHaveBeenCalled();
   });
@@ -608,11 +614,19 @@ describe("organiser actions", () => {
     expectNoWrites();
   });
 
-  it("regeneratePinAction returns the new PIN, or explains a lost race", async () => {
+  it("regeneratePinAction returns a new PIN and a new organiser link, or explains a lost race", async () => {
     asOrganiser();
-    m(data.regeneratePin).mockImplementationOnce(async (t, pin) => ({ ...trip(), pin, pinVersion: t.pinVersion + 1 }));
+    m(data.regeneratePin).mockImplementationOnce(async (t, pin, organiserToken) => ({
+      ...trip(),
+      pin,
+      organiserToken,
+      pinVersion: t.pinVersion + 1,
+    }));
     const r = await actions.regeneratePinAction("trip_abc", "organiser-token");
-    expect(r).toEqual({ ok: true, pin: m(data.regeneratePin).mock.calls[0][1] });
+    const [, newPinArg, newTokenArg] = m(data.regeneratePin).mock.calls[0];
+    expect(r).toEqual({ ok: true, pin: newPinArg, organiserToken: newTokenArg });
+    expect(newTokenArg).not.toBe("organiser-token");
+    expect(newTokenArg.length).toBeGreaterThanOrEqual(40);
     m(data.regeneratePin).mockResolvedValueOnce(null);
     expect(await actions.regeneratePinAction("trip_abc", "organiser-token")).toEqual({
       ok: false,
