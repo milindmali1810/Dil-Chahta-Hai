@@ -24,3 +24,5 @@ Trip controls                           h2
 
 - After Regenerate PIN: show the new PIN and the new organiser link inside SaveThisLink, then move the browser to the new organiser URL (the old one no longer works).
 - Results here use the same ResultCard as trip home, plus the Mark-as-final button. Only shown options can be marked (the action enforces this).
+
+- A PhotoHeader goes on top (the same photo as the trip home, `pickPhoto(trip.id)` or the chosen destination), with the PhotoCredits line at the bottom.

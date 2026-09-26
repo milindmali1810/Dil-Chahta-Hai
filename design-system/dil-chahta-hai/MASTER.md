@@ -1,7 +1,7 @@
 # Dil Chahta Hai: Design System (MASTER)
 
 The source of truth for every page in T6. Page files in `pages/` add layout details and override this only where they say so.
-Generated 2026-09-26 with /ui-ux-pro-max. **Revision 2: "warmer, more playful"**, as the user asked. The choices below are the tool's recommendations, adjusted where they failed a check; every adjustment is noted.
+Generated 2026-09-26 with /ui-ux-pro-max. **Revision 2: "warmer, more playful"**, as the user asked. **Revision 3: vacation photos** (section 10), also the user's request. The choices below are the tool's recommendations, adjusted where they failed a check; every adjustment is noted.
 
 ## 1. Direction
 
@@ -12,7 +12,8 @@ Generated 2026-09-26 with /ui-ux-pro-max. **Revision 2: "warmer, more playful"**
   - rounded Fredoka headings;
   - big-radius cards;
   - a gentle "pop" when a choice is ticked.
-- **Not used:** full-page Aurora/mesh gradients (text readability risk), the scroll-storytelling landing pattern, GSAP, and stock photos.
+- **Vacation photos** (rev 3): a big photo header on every page and a photo on every result card, so people feel the holiday as soon as they open the link. See section 10. This overrides the tool's generic "avoid photos" note: the user asked for them, and they're real places, not generic stock.
+- **Not used:** full-page Aurora/mesh gradients, full-screen photo backgrounds behind forms (readability risk), the scroll-storytelling landing pattern, and GSAP.
 - **Phone first:** design at 375px, and check 320px and 768px. Above that, the single column is centred at a max width of 480px. Never scroll sideways, and never disable zoom.
 
 ## 2. Colour tokens
@@ -105,7 +106,8 @@ Forms call the server actions in `app/actions.ts` via `<form action>` plus `useA
 
 | Component | Look | States |
 |---|---|---|
-| **Page** | 6px sunset stripe at the top, "Dil Chahta Hai" Fredoka wordmark, single 480px column, 16px sides | — |
+| **Page** | **PhotoHeader** on top (section 10), then a single 480px column, 16px sides. Content cards start 12px below the photo | — |
+| **PhotoHeader** | Full-width photo, 240px tall on phone (280 on ≥ 400px), sunset stripe along the top edge, wordmark in a brown pill top-left, page title and subtitle in white at the bottom over the scrim | one photo per page; on the create page a slow crossfade between 3 (off under reduced motion) |
 | **Button** | Full width on phone, 48px min height, 14px radius, Nunito 700. Variants: **primary** (orange fill, white text), **secondary** (white, orange border and text), **quiet** (orange text only, still 48px tall), **decision** (sea-blue fill, white; only for "Mark as final"), **danger-outline** (red border and text; only for "Lock now") | pressed (darker, `scale .98`), focus ring, pending (spinner + "…ing", disabled), disabled |
 | **TextField** | Label above (Nunito 700), 48px white input with a stone-500 border, helper below (muted), error below (red, with icon) | empty, focus, error, read-only when locked |
 | **PinField** | One 56px input, 28px Nunito 700 digits with wide spacing, numeric keypad, paste allowed | as TextField, plus "paused" |
@@ -114,8 +116,9 @@ Forms call the server actions in `app/actions.ts` via `<form action>` plus `useA
 | **CopyField** | Label, the value in a cream box, "Copy" secondary button | tapped → "✓ Copied" for 2s (`aria-live="polite"`) |
 | **Notice** | Soft-tinted box, 14px radius, icon + text: info (decision-soft), success, warning, error | `role="status"` / `role="alert"` |
 | **StatusRow** | Name, Badge, and "updated 9:42 PM" | ✓ Submitted (green), ◷ Pending (amber) |
-| **Badge** | Pill, icon + word, 14px Nunito 700 | success, warning, neutral, 🔒 locked, provisional |
-| **ResultCard** | White 16px-radius card: "Option 1" chip, destination in Fredoka, "12–16 Dec · ₹12,000 per person", the why-line, average; then person rows (name, score, reason) | passing (✓ green why-line), flagged (warning-soft card, ⚠ + problem line), chosen (2px sea-blue border + "Chosen" badge) |
+| **Badge** | Pill, icon + word, 14px Nunito 700 | success, warning, neutral, 🔒 locked, provisional, **Domestic** (map-pin, orange-soft) / **International** (plane, decision-soft) |
+| **ResultCard** | White 16px-radius card with a **112px destination photo on top** (lazy-loaded), then the "Option 1" chip + **Domestic/International badge** (from the destination's `international` tag), destination in Fredoka, "12–16 Dec · ₹12,000 per person", the why-line, average; then person rows (name, score, reason) | passing (✓ green why-line), flagged (warning-soft card, ⚠ + problem line), chosen (2px sea-blue border + "Chosen" badge) |
+| **PhotoCredits** | One small line at the bottom of every page that shows photos: "Photos: {place}: {author}, {licence} · …", with each linking to its source; plus a "Photo credits" link to `/images/places/CREDITS.md` | — |
 | **DecisionBanner** | Sea-blue soft block, map-pin icon, Fredoka "Decided: Goa, 12–16 Dec" | only when a final choice is set |
 | **ConfirmDialog** | Native `<dialog>`, 16px radius, question + two buttons | "Lock now?", "Is this really you?", "Mark as final?" |
 | **SaveThisLink** | Warning Notice around the organiser CopyField | on creation and after Regenerate PIN |
@@ -136,3 +139,23 @@ Friendly, plain, short. Tell people what to do next. Use the exact strings from 
 - [ ] Every form shows pending, then success or error; errors sit next to their fields
 - [ ] No friend's budget appears anywhere except their own form
 - [ ] No raw hex in components; tokens only; the sunset gradient appears only in the top stripe
+
+## 10. Photography (revision 3)
+
+- **The set:** 8 photos in `public/images/places/`: 5 Indian (Goa, Ladakh, Jaipur, Kerala, Andaman) and 3 international (Santorini, Bali, Swiss Alps). All are from Wikimedia Commons under CC BY / CC BY-SA. The metadata and credits live in `lib/photos.ts`, and the full table is in `public/images/places/CREDITS.md`.
+- **Which photo where:**
+  - The create page crossfades Goa → Ladakh → Santorini every 6 seconds; under reduced motion it shows Goa only.
+  - Trip pages show the chosen destination's photo once a final choice is set. Before that, they show a stable photo picked from the trip ID (`pickPhoto(trip.id)`), so the trip always looks the same.
+  - Result cards use `destinationPhoto(destination.id)`. Real per-destination photos get mapped in `DESTINATION_PHOTOS` once the destination sheet is ready.
+- **Readability over photos:** text sits only in the bottom 35% of the header, over a warm scrim, `linear-gradient(180deg, rgb(67 20 7 / .20) 0%, rgb(67 20 7 / .20) 40%, rgb(67 20 7 / .88) 100%)`, plus `text-shadow: 0 1px 2px rgb(0 0 0 / .45)`.
+  - Worst case, a pure-white area of the photo at 70% height, still gives white text at least 4.5:1. Verify with screenshots at /qa-only.
+  - The wordmark sits in a pill with `rgb(67 20 7 / .70)` behind it, never directly on sky.
+  - Forms and results are always on solid white cards, never on photos.
+- **Speed on mobile data:**
+  - Always use `next/image`, which serves resized AVIF/WebP to phones (about 60–120 KB).
+  - The header image gets `priority` and `sizes="(max-width: 480px) 100vw, 480px"`.
+  - Result-card photos are lazy-loaded with `sizes="(max-width: 480px) 100vw, 480px"` and a warm `--color-primary-soft` placeholder colour, so there's no layout jump.
+  - At most 1 header photo plus 3 card photos per page.
+- **Alt text:** the header photo is decorative (`alt=""`), because the title says where you are. Result-card photos use `alt={photo.place}`.
+- **Credits are required:** every page that shows a photo shows the PhotoCredits line, and the credits page stays reachable. Don't remove or hide it; the licences depend on it.
+- **Domestic / International** (user's request, rev 3): no new rules. The badge comes from the destination's existing `international` dealbreaker tag, and friends can still rule out international travel on their form.

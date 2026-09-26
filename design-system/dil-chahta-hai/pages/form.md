@@ -28,3 +28,5 @@ Anything you'd rule out?                 h2  "Optional"
 - On success, show a success Notice with the action's `savedAtText` ("Saved at 9:42 PM. You can edit until …") and keep the form filled in.
 - **Pre-fill:** use the saved answers. Pre-fill the budget **only if** the saved device ID equals this phone's cookie device ID; otherwise leave it blank with the helper "Type your budget again".
 - **Locked** (deadline, early lock or final choice): all fields are read-only, a Notice gives the reason (the action's exact strings), and there's no save button.
+
+- A PhotoHeader goes on top (the same photo as the trip home, `pickPhoto(trip.id)` or the chosen destination), with the PhotoCredits line at the bottom.

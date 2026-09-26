@@ -5,8 +5,9 @@ Follows MASTER. Actions used: `createTrip`.
 ## Create form (top to bottom, one column)
 
 ```
-Dil Chahta Hai                          ← wordmark
-Plan the trip                           ← h1 (Fredoka)
+[PhotoHeader: crossfade Goa → Ladakh → Santorini, 6s; static under reduced motion]
+ Dil Chahta Hai (wordmark pill)
+ Plan the trip                          ← h1 (Fredoka, white, over the photo)
 One link for everyone. Everyone adds    ← muted intro, 2 lines max
 their dates and budget; the app ranks the options.
 
@@ -37,3 +38,5 @@ Keep this one to yourself:              Notice (warning) = SaveThisLink
 ```
 
 - The organiser link is shown only here and on the organiser page. It never appears on friend pages.
+
+- A PhotoCredits line goes at the bottom of both screens.

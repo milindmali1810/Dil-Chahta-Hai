@@ -29,10 +29,11 @@ Who are you?                            h2
 ## Step 3: Home
 
 ```
-You're Asha · Not you? Switch           small row, quiet link (switchName)
+[PhotoHeader: chosen destination's photo, or pickPhoto(trip.id)]
+ {Trip name}                            h1 (white, over the photo)
+ Answers lock Wed 30 Sep, 11:59 PM IST  subtitle (white, over the photo)
+You're Asha · Not you? Switch           small row under the photo, quiet link (switchName)
 [DecisionBanner] Decided: Goa, 12–16 Dec   ← only when final is set
-{Trip name}                             h1
-Answers lock Wed 30 Sep, 11:59 PM IST   muted
 [ Add / edit my answers ]               primary → /t/{id}/form (hidden or disabled + reason when locked)
 
 Who has answered                        h2
@@ -40,7 +41,8 @@ Who has answered                        h2
  Karan   ◷ Pending
 Results                                 h2 + Badge (Provisional / Results (locked))
  Based on 4 of 5. Waiting on: Karan.    muted, from computeResults().label
- [ResultCard] ×2–3                      passing, then flagged (per the design doc rules 5–6)
+ [ResultCard] ×2–3                      destination photo + Domestic/International badge; passing, then flagged (per the design doc rules 5–6)
+Photos: … (PhotoCredits line)
 ```
 
 - With fewer than 2 submitters: Notice "Results appear once 2 people have answered." and no cards.
