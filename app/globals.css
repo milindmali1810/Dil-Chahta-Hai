@@ -1,26 +1,123 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * Design tokens: design-system/dil-chahta-hai/MASTER.md, section 2.
+ * Components use these names only (bg-primary, text-fg, …), never raw hex.
+ * Tailwind's default palette is switched off so a stray `bg-orange-600` can't sneak in.
+ */
+@theme {
+  --color-*: initial;
+  --color-white: #ffffff;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-bg: #fff7ed;
+  --color-card: #ffffff;
+  --color-fg: #431407;
+  --color-muted-fg: #57534e;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  --color-primary: #c2410c;
+  --color-primary-pressed: #9a3412;
+  --color-primary-soft: #ffedd5;
+
+  --color-decision: #0369a1;
+  --color-decision-soft: #e0f2fe;
+  --color-decision-fg: #0c4a6e;
+
+  --color-success: #15803d;
+  --color-success-soft: #dcfce7;
+  --color-success-fg: #166534;
+
+  --color-warning: #92400e;
+  --color-warning-soft: #fef3c7;
+  --color-warning-fg: #78350f;
+
+  --color-error: #b91c1c;
+  --color-error-soft: #fef2f2;
+
+  --color-border: #fed7aa;
+  --color-input-border: #78716c;
+
+  /* Section 4: shape and elevation. */
+  --radius-card: 16px;
+  --radius-control: 14px;
+  --shadow-card: 0 1px 2px rgb(67 20 7 / 0.06), 0 4px 12px rgb(67 20 7 / 0.05);
+
+  /* Section 5: the "pop" when a choice is ticked. */
+  --animate-pop: pop 180ms ease-out;
+  --animate-spin: spin 1s linear infinite;
+
+  @keyframes pop {
+    from {
+      transform: scale(0.97);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Fonts come from next/font (app/layout.tsx) as CSS variables on <html>. */
+@theme inline {
+  --font-sans: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fredoka), var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  /* The only gradient: the 6px stripe at the top of every page (section 1). */
+  --sunset: linear-gradient(90deg, #fb923c, #f43f5e, #fbbf24);
+}
+
+@layer base {
+  body {
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 24px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Section 5: blue focus ring on every focusable element; it shows against the orange buttons. */
+  :focus-visible {
+    outline: 2px solid var(--color-decision);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  /* Section 10: 6px sunset stripe along the top edge. Never behind text. */
+  .sunset-stripe {
+    height: 6px;
+    background: var(--sunset);
+  }
+
+  /* Section 10: warm scrim so white text at the bottom of a photo stays readable. */
+  .photo-scrim {
+    background: linear-gradient(
+      180deg,
+      rgb(67 20 7 / 0.2) 0%,
+      rgb(67 20 7 / 0.2) 40%,
+      rgb(67 20 7 / 0.88) 100%
+    );
+  }
+
+  .photo-text {
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.45);
+  }
+}
+
+/* Section 5: all motion off under reduced motion (transitions, the pop, the spinner, the crossfade). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }
