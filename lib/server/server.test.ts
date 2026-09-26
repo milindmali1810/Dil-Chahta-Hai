@@ -26,9 +26,18 @@ import {
 import {
   canSave,
   formatDeadlineIst,
+  formatTimeIst,
   getDb,
+  isCalendarDate,
+  parseCreateTripInput,
+  parseParticipantName,
+  parsePin,
+  parseResponseInput,
+  pinOutcomeMessage,
   resultsLabel,
+  savedAtText,
   toDeadlineIso,
+  windowLabel,
   type Trip,
 } from "@/lib/server/data";
 
@@ -388,5 +397,266 @@ describe("keep-alive route (R1)", () => {
     expect(res.status).toBe(500);
     expect(await res.text()).toBe(JSON.stringify({ ok: false }));
     spy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Input validation (Q1): the pure helpers behind app/actions.ts.
+// ---------------------------------------------------------------------------
+
+describe("windowLabel / formatTimeIst / savedAtText", () => {
+  it("labels windows readably", () => {
+    expect(windowLabel("2026-12-12", "2026-12-16")).toBe("12–16 Dec");
+    expect(windowLabel("2026-12-30", "2027-01-03")).toBe("30 Dec – 3 Jan");
+    expect(windowLabel("2026-11-28", "2026-12-02")).toBe("28 Nov – 2 Dec");
+    expect(windowLabel("2026-12-12", "2026-12-12")).toBe("12 Dec");
+    // Same month, different year: not "12–16 Dec".
+    expect(windowLabel("2026-12-12", "2027-12-16")).toBe("12 Dec – 16 Dec");
+  });
+
+  it("formats the time in IST regardless of the machine timezone", () => {
+    expect(formatTimeIst(new Date("2026-09-25T21:42:10+05:30"))).toBe("9:42 PM");
+    expect(formatTimeIst(new Date("2026-09-25T16:12:00Z"))).toBe("9:42 PM");
+    expect(formatTimeIst(new Date("2026-09-25T00:05:00+05:30"))).toBe("12:05 AM");
+    expect(formatTimeIst(new Date("2026-09-25T12:00:00+05:30"))).toBe("12:00 PM");
+    expect(formatTimeIst(new Date("2026-09-25T09:07:00+05:30"))).toBe("9:07 AM");
+  });
+
+  it("builds the save confirmation", () => {
+    expect(savedAtText(new Date("2026-09-25T21:42:00+05:30"), DEADLINE)).toBe(
+      "Saved at 9:42 PM. You can edit until Wed 30 Sep, 11:59 PM IST",
+    );
+  });
+
+  it("isCalendarDate accepts real YYYY-MM-DD dates only", () => {
+    expect(isCalendarDate("2028-02-29")).toBe(true);
+    expect(isCalendarDate("2026-02-29")).toBe(false);
+    expect(isCalendarDate("2026-02-31")).toBe(false);
+    expect(isCalendarDate("2026-13-01")).toBe(false);
+    expect(isCalendarDate("2026-1-05")).toBe(false);
+    expect(isCalendarDate(20261205)).toBe(false);
+  });
+});
+
+describe("PIN and name input", () => {
+  it("parsePin: exactly 6 digits, leading zeros kept, spaces around ignored", () => {
+    expect(parsePin("042917")).toEqual({ ok: true, value: "042917" });
+    expect(parsePin(" 042917 ")).toEqual({ ok: true, value: "042917" });
+    for (const bad of ["42917", "0429170", "04291a", "04 2917", "", 42917, null, undefined, ["042917"]]) {
+      expect(parsePin(bad)).toEqual({ ok: false, message: "Enter the 6-digit PIN." });
+    }
+  });
+
+  it("pinOutcomeMessage: plain words, singular when it's 1", () => {
+    expect(pinOutcomeMessage({ outcome: "wrong", triesLeft: 3 })).toBe(
+      "That PIN isn't right. 3 tries left.",
+    );
+    expect(pinOutcomeMessage({ outcome: "wrong", triesLeft: 1 })).toBe(
+      "That PIN isn't right. 1 try left.",
+    );
+    expect(pinOutcomeMessage({ outcome: "paused", minutesLeft: 15 })).toBe(
+      "Too many wrong tries. Try again in 15 minutes.",
+    );
+    expect(pinOutcomeMessage({ outcome: "paused", minutesLeft: 1 })).toBe(
+      "Too many wrong tries. Try again in 1 minute.",
+    );
+  });
+
+  it("parseParticipantName: only an exact name from the trip", () => {
+    const names = ["Asha", "Bilal"];
+    expect(parseParticipantName("Bilal", names)).toEqual({ ok: true, value: "Bilal" });
+    for (const bad of ["bilal", " Bilal", "Karan", "", 1, undefined]) {
+      expect(parseParticipantName(bad, names).ok).toBe(false);
+    }
+  });
+});
+
+describe("parseCreateTripInput", () => {
+  const NOW = new Date("2026-09-25T12:00:00+05:30");
+  const valid = () => ({
+    tripName: "  Goa?  ",
+    participantNames: [" Asha ", "Bilal", "Chirag"],
+    windows: [
+      { start: "2026-12-12", end: "2026-12-16" },
+      { start: "2026-12-30", end: "2027-01-03" },
+      { start: "2027-01-10", end: "2027-01-10" },
+    ],
+    deadlineDate: "2026-09-30",
+    deadlineTime: "21:00",
+  });
+  const message = (overrides: Record<string, unknown>) => {
+    const r = parseCreateTripInput({ ...valid(), ...overrides }, NOW);
+    return r.ok ? null : r.message;
+  };
+
+  it("accepts a valid trip: trimmed, window ids w1.., labels, IST deadline", () => {
+    expect(parseCreateTripInput(valid(), NOW)).toEqual({
+      ok: true,
+      value: {
+        name: "Goa?",
+        participantNames: ["Asha", "Bilal", "Chirag"],
+        windows: [
+          { id: "w1", label: "12–16 Dec", start: "2026-12-12", end: "2026-12-16" },
+          { id: "w2", label: "30 Dec – 3 Jan", start: "2026-12-30", end: "2027-01-03" },
+          { id: "w3", label: "10 Jan", start: "2027-01-10", end: "2027-01-10" },
+        ],
+        deadline: "2026-09-30T21:00:59+05:30",
+      },
+    });
+  });
+
+  it("defaults the deadline time to 23:59", () => {
+    for (const deadlineTime of [undefined, ""]) {
+      const r = parseCreateTripInput({ ...valid(), deadlineTime }, NOW);
+      expect(r.ok && r.value.deadline).toBe("2026-09-30T23:59:59+05:30");
+    }
+  });
+
+  it("rejects input that isn't an object", () => {
+    for (const input of [null, undefined, "trip", 1, []]) {
+      expect(parseCreateTripInput(input, NOW).ok).toBe(false);
+    }
+  });
+
+  it("trip name: 1-60 characters after trimming", () => {
+    expect(message({ tripName: "   " })).toBe("Give the trip a name.");
+    expect(message({ tripName: 5 })).toBe("Give the trip a name.");
+    expect(message({ tripName: "x".repeat(60) })).toBeNull();
+    expect(message({ tripName: "x".repeat(61) })).toBe(
+      "Keep the trip name to 60 characters or fewer.",
+    );
+  });
+
+  it("people: 2-10", () => {
+    expect(message({ participantNames: ["Asha"] })).toBe("Add at least 2 people.");
+    expect(message({ participantNames: "Asha, Bilal" })).toBe("Add at least 2 people.");
+    expect(message({ participantNames: ["Asha", "Bilal"] })).toBeNull();
+    const ten = Array.from({ length: 10 }, (_, i) => `P${i}`);
+    expect(message({ participantNames: ten })).toBeNull();
+    expect(message({ participantNames: [...ten, "P10"] })).toBe("You can add up to 10 people.");
+  });
+
+  it("names: non-empty, at most 30 characters, unique ignoring case", () => {
+    expect(message({ participantNames: ["Asha", "  "] })).toBe("Names can't be blank.");
+    expect(message({ participantNames: ["Asha", 7] })).toBe("Names can't be blank.");
+    expect(message({ participantNames: ["Asha", "x".repeat(30)] })).toBeNull();
+    expect(message({ participantNames: ["Asha", "x".repeat(31)] })).toBe(
+      "Keep each name to 30 characters or fewer.",
+    );
+    expect(message({ participantNames: ["Asha", "Bilal", " asha"] })).toBe(
+      'Each name must be different. "asha" is there twice.',
+    );
+  });
+
+  it("windows: 3-4, real dates, start ≤ end", () => {
+    const w = (start: string, end: string) => ({ start, end });
+    const three = valid().windows;
+    expect(message({ windows: three.slice(0, 2) })).toBe("Add 3 or 4 date options.");
+    expect(message({ windows: [...three, w("2027-02-01", "2027-02-03")] })).toBeNull();
+    expect(
+      message({ windows: [...three, w("2027-02-01", "2027-02-03"), w("2027-03-01", "2027-03-03")] }),
+    ).toBe("Add 3 or 4 date options.");
+    expect(message({ windows: "w1" })).toBe("Add 3 or 4 date options.");
+    expect(message({ windows: [three[0], three[1], { start: "2027-02-01" }] })).toBe(
+      "Date option 3 needs a start and an end date.",
+    );
+    expect(message({ windows: [three[0], w("2026-02-27", "2026-02-31"), three[2]] })).toBe(
+      "Date option 2 has a date that doesn't exist.",
+    );
+    expect(message({ windows: [w("2026-12-16", "2026-12-12"), three[1], three[2]] })).toBe(
+      "In date option 1, the end date is before the start date.",
+    );
+  });
+
+  it("deadline: a real date and time, in the future", () => {
+    expect(message({ deadlineDate: "" })).toBe("Pick a deadline date.");
+    expect(message({ deadlineDate: "2026-02-31" })).toBe("Pick a real deadline date and time.");
+    expect(message({ deadlineTime: "24:00" })).toBe("Pick a real deadline date and time.");
+    expect(message({ deadlineTime: 2359 })).toBe("Pick a real deadline date and time.");
+    expect(message({ deadlineDate: "2026-09-24" })).toBe("The deadline must be in the future.");
+    // Today at 11:59 AM IST has passed at noon; 12:00 PM today (…:59 seconds) is still ahead.
+    expect(message({ deadlineDate: "2026-09-25", deadlineTime: "11:59" })).toBe(
+      "The deadline must be in the future.",
+    );
+    expect(message({ deadlineDate: "2026-09-25", deadlineTime: "12:00" })).toBeNull();
+  });
+});
+
+describe("parseResponseInput", () => {
+  const WINDOW_IDS = ["w1", "w2", "w3"];
+  const valid = () => ({
+    budgetInr: 15000,
+    availableWindowIds: ["w3", "w1"],
+    dealbreakers: ["trekking"],
+    tripType: "beach",
+  });
+  const parse = (overrides: Record<string, unknown>) =>
+    parseResponseInput({ ...valid(), ...overrides }, WINDOW_IDS);
+
+  it("accepts a valid response, de-duplicated and in the trip's order", () => {
+    expect(
+      parse({ availableWindowIds: ["w3", "w1", "w3"], dealbreakers: ["trekking", "international"] }),
+    ).toEqual({
+      ok: true,
+      value: {
+        budgetInr: 15000,
+        availableWindowIds: ["w1", "w3"],
+        dealbreakers: ["international", "trekking"],
+        tripType: "beach",
+      },
+    });
+  });
+
+  it("never returns a name, even if the input carries one", () => {
+    const r = parse({ name: "Bilal" });
+    expect(r.ok && Object.keys(r.value).sort()).toEqual([
+      "availableWindowIds",
+      "budgetInr",
+      "dealbreakers",
+      "tripType",
+    ]);
+  });
+
+  it("budget: a whole number from 1 to 10,00,000", () => {
+    expect(parse({ budgetInr: 1 }).ok).toBe(true);
+    expect(parse({ budgetInr: 1_000_000 }).ok).toBe(true);
+    for (const budgetInr of [0, -5, 1_000_001, 12.5, "15000", NaN, Infinity, null, undefined]) {
+      expect(parse({ budgetInr })).toEqual({
+        ok: false,
+        message: "Enter your budget in whole rupees, from 1 to 10,00,000.",
+      });
+    }
+  });
+
+  it("windows: a subset of the trip's windows; zero is allowed (Q5)", () => {
+    const r = parse({ availableWindowIds: [] });
+    expect(r.ok && r.value.availableWindowIds).toEqual([]);
+    for (const availableWindowIds of [["w4"], ["w1", "W2"], [1], "w1", undefined]) {
+      expect(parse({ availableWindowIds }).ok).toBe(false);
+    }
+  });
+
+  it("dealbreakers: a subset of the known tags; none is fine", () => {
+    expect(parse({ dealbreakers: [] }).ok).toBe(true);
+    expect(parse({ dealbreakers: ["trekking", "long_flight"] })).toEqual({
+      ok: false,
+      message: "Some of the dealbreakers you ticked aren't on the list. Reload and try again.",
+    });
+    expect(parse({ dealbreakers: "trekking" }).ok).toBe(false);
+  });
+
+  it("trip type: one of the 5 values", () => {
+    for (const tripType of ["beach", "hills", "city", "adventure", "none"]) {
+      expect(parse({ tripType }).ok).toBe(true);
+    }
+    for (const tripType of ["Beach", "desert", "", null, undefined]) {
+      expect(parse({ tripType }).ok).toBe(false);
+    }
+  });
+
+  it("rejects input that isn't an object", () => {
+    for (const input of [null, "x", 5, []]) {
+      expect(parseResponseInput(input, WINDOW_IDS).ok).toBe(false);
+    }
   });
 });

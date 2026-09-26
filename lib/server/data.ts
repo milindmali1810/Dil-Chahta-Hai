@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { DEALBREAKER_TAGS } from "@/lib/scoring";
 import type {
   DateWindow,
   DealbreakerTag,
@@ -381,4 +382,241 @@ export async function registerPinFailure(tripId: string, now: Date): Promise<Pin
 
 export async function resetPinTries(tripId: string): Promise<void> {
   await updateTrip("resetPinTries", tripId, { failed_pin_tries: 0, pin_paused_until: null });
+}
+
+// ---------------------------------------------------------------------------
+// Input validation (pure; used by app/actions.ts, Q1).
+// Server actions are public HTTP endpoints, so every input arrives as
+// `unknown` and is checked here. Messages are plain and shown to the user.
+// ---------------------------------------------------------------------------
+
+export type Parsed<T> = { ok: true; value: T } | { ok: false; message: string };
+
+export const TRIP_NAME_MAX = 60;
+export const PARTICIPANTS_MIN = 2;
+export const PARTICIPANTS_MAX = 10;
+export const PARTICIPANT_NAME_MAX = 30;
+export const WINDOWS_MIN = 3;
+export const WINDOWS_MAX = 4;
+export const BUDGET_MAX_INR = 1_000_000;
+export const DEFAULT_DEADLINE_TIME = "23:59";
+export const TRIP_TYPE_PREFS = [
+  "beach",
+  "hills",
+  "city",
+  "adventure",
+  "none",
+] as const satisfies readonly TripTypePref[];
+
+function bad(message: string): { ok: false; message: string } {
+  return { ok: false, message };
+}
+
+function isRecord(x: unknown): x is Record<string, unknown> {
+  return typeof x === "object" && x !== null && !Array.isArray(x);
+}
+
+/** Length in characters as a person counts them (an emoji is one, not two). */
+function charCount(s: string): number {
+  return Array.from(s).length;
+}
+
+/** A real calendar date written as YYYY-MM-DD (rejects 2026-02-31). */
+export function isCalendarDate(x: unknown): x is string {
+  if (typeof x !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(x)) return false;
+  const d = new Date(`${x}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === x;
+}
+
+/**
+ * A readable label for a window of calendar dates (both ends inclusive):
+ * "12 Dec", "12–16 Dec", "30 Dec – 3 Jan". Built from the date text itself,
+ * so the machine timezone can't shift a day.
+ */
+export function windowLabel(start: string, end: string): string {
+  const [, sm, sd] = start.split("-").map(Number);
+  const [, em, ed] = end.split("-").map(Number);
+  if (start === end) return `${sd} ${MONTHS[sm - 1]}`;
+  if (start.slice(0, 7) === end.slice(0, 7)) return `${sd}–${ed} ${MONTHS[em - 1]}`;
+  return `${sd} ${MONTHS[sm - 1]} – ${ed} ${MONTHS[em - 1]}`;
+}
+
+/** e.g. "9:42 PM", in IST regardless of the machine timezone. */
+export function formatTimeIst(date: Date): string {
+  const d = new Date(date.getTime() + IST_OFFSET_MS);
+  const h24 = d.getUTCHours();
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${h12}:${mm} ${h24 < 12 ? "AM" : "PM"}`;
+}
+
+/** "Saved at 9:42 PM. You can edit until Wed 30 Sep, 11:59 PM IST" */
+export function savedAtText(savedAt: Date, deadline: string): string {
+  return `Saved at ${formatTimeIst(savedAt)}. You can edit until ${formatDeadlineIst(deadline)}`;
+}
+
+function plural(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+/** What a refused PIN attempt tells the user. */
+export function pinOutcomeMessage(
+  o: { outcome: "wrong"; triesLeft: number } | { outcome: "paused"; minutesLeft: number },
+): string {
+  return o.outcome === "wrong"
+    ? `That PIN isn't right. ${plural(o.triesLeft, "try", "tries")} left.`
+    : `Too many wrong tries. Try again in ${plural(o.minutesLeft, "minute", "minutes")}.`;
+}
+
+/** The PIN as typed: exactly 6 digits (spaces around a pasted PIN are ignored). */
+export function parsePin(pin: unknown): Parsed<string> {
+  const p = typeof pin === "string" ? pin.trim() : "";
+  return /^\d{6}$/.test(p) ? { ok: true, value: p } : bad("Enter the 6-digit PIN.");
+}
+
+/** The name must be exactly one of the trip's participant names. */
+export function parseParticipantName(name: unknown, participantNames: string[]): Parsed<string> {
+  return typeof name === "string" && participantNames.includes(name)
+    ? { ok: true, value: name }
+    : bad("Pick your name from the list.");
+}
+
+export interface CreateTripValue {
+  name: string;
+  participantNames: string[];
+  windows: DateWindow[];
+  /** e.g. "2026-09-30T23:59:59+05:30" */
+  deadline: string;
+}
+
+/**
+ * The create form (Q1, A4). Expects
+ * `{ tripName, participantNames: string[], windows: {start, end}[], deadlineDate, deadlineTime? }`
+ * with dates as YYYY-MM-DD and the time as HH:MM (IST, default 23:59).
+ */
+export function parseCreateTripInput(input: unknown, now: Date): Parsed<CreateTripValue> {
+  if (!isRecord(input)) return bad("Something's missing. Fill in the form and try again.");
+
+  // Trip name.
+  const name = typeof input.tripName === "string" ? input.tripName.trim() : "";
+  if (name === "") return bad("Give the trip a name.");
+  if (charCount(name) > TRIP_NAME_MAX) {
+    return bad(`Keep the trip name to ${TRIP_NAME_MAX} characters or fewer.`);
+  }
+
+  // Participants.
+  const rawNames = input.participantNames;
+  if (!Array.isArray(rawNames) || rawNames.length < PARTICIPANTS_MIN) {
+    return bad(`Add at least ${PARTICIPANTS_MIN} people.`);
+  }
+  if (rawNames.length > PARTICIPANTS_MAX) return bad(`You can add up to ${PARTICIPANTS_MAX} people.`);
+  const participantNames: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of rawNames) {
+    const n = typeof raw === "string" ? raw.trim() : "";
+    if (n === "") return bad("Names can't be blank.");
+    if (charCount(n) > PARTICIPANT_NAME_MAX) {
+      return bad(`Keep each name to ${PARTICIPANT_NAME_MAX} characters or fewer.`);
+    }
+    const key = n.toLowerCase();
+    if (seen.has(key)) return bad(`Each name must be different. "${n}" is there twice.`);
+    seen.add(key);
+    participantNames.push(n);
+  }
+
+  // Date windows.
+  const rawWindows = input.windows;
+  if (
+    !Array.isArray(rawWindows) ||
+    rawWindows.length < WINDOWS_MIN ||
+    rawWindows.length > WINDOWS_MAX
+  ) {
+    return bad(`Add ${WINDOWS_MIN} or ${WINDOWS_MAX} date options.`);
+  }
+  const windows: DateWindow[] = [];
+  for (const [i, raw] of rawWindows.entries()) {
+    const n = i + 1;
+    const start = isRecord(raw) ? raw.start : undefined;
+    const end = isRecord(raw) ? raw.end : undefined;
+    if (typeof start !== "string" || typeof end !== "string" || start === "" || end === "") {
+      return bad(`Date option ${n} needs a start and an end date.`);
+    }
+    if (!isCalendarDate(start) || !isCalendarDate(end)) {
+      return bad(`Date option ${n} has a date that doesn't exist.`);
+    }
+    if (start > end) return bad(`In date option ${n}, the end date is before the start date.`);
+    windows.push({ id: `w${n}`, label: windowLabel(start, end), start, end });
+  }
+
+  // Deadline (SO-2): an IST date + time, in the future.
+  const date = input.deadlineDate;
+  const rawTime = input.deadlineTime;
+  const time = rawTime === undefined || rawTime === "" ? DEFAULT_DEADLINE_TIME : rawTime;
+  if (typeof date !== "string" || date === "") return bad("Pick a deadline date.");
+  if (typeof time !== "string") return bad("Pick a real deadline date and time.");
+  let deadline: string;
+  try {
+    deadline = toDeadlineIso(date, time);
+  } catch {
+    return bad("Pick a real deadline date and time.");
+  }
+  if (new Date(deadline).getTime() <= now.getTime()) {
+    return bad("The deadline must be in the future.");
+  }
+
+  return { ok: true, value: { name, participantNames, windows, deadline } };
+}
+
+export interface ResponseValue {
+  budgetInr: number;
+  availableWindowIds: string[];
+  dealbreakers: DealbreakerTag[];
+  tripType: TripTypePref;
+}
+
+/**
+ * The participant form (Q1). Expects
+ * `{ budgetInr: number, availableWindowIds: string[], dealbreakers: string[], tripType }`.
+ * Ticking zero windows is allowed (Q5). No name is read here: it comes from the cookie.
+ * The lists come back de-duplicated, in the trip's window order and DEALBREAKER_TAGS order.
+ */
+export function parseResponseInput(input: unknown, windowIds: string[]): Parsed<ResponseValue> {
+  if (!isRecord(input)) return bad("Something's missing. Fill in the form and try again.");
+
+  const budget = input.budgetInr;
+  if (
+    typeof budget !== "number" ||
+    !Number.isInteger(budget) ||
+    budget < 1 ||
+    budget > BUDGET_MAX_INR
+  ) {
+    return bad("Enter your budget in whole rupees, from 1 to 10,00,000.");
+  }
+
+  const ticked = input.availableWindowIds;
+  if (
+    !Array.isArray(ticked) ||
+    !ticked.every((id) => typeof id === "string" && windowIds.includes(id))
+  ) {
+    return bad("Some of the dates you ticked aren't options for this trip. Reload and try again.");
+  }
+
+  const tags = input.dealbreakers;
+  const known: readonly string[] = DEALBREAKER_TAGS;
+  if (!Array.isArray(tags) || !tags.every((t) => typeof t === "string" && known.includes(t))) {
+    return bad("Some of the dealbreakers you ticked aren't on the list. Reload and try again.");
+  }
+
+  const tripType = TRIP_TYPE_PREFS.find((t) => t === input.tripType);
+  if (tripType === undefined) return bad('Pick a trip type, or "No preference".');
+
+  return {
+    ok: true,
+    value: {
+      budgetInr: budget,
+      availableWindowIds: windowIds.filter((id) => ticked.includes(id)),
+      dealbreakers: DEALBREAKER_TAGS.filter((t) => tags.includes(t)),
+      tripType,
+    },
+  };
 }
