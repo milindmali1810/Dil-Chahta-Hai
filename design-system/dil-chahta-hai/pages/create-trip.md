@@ -6,7 +6,7 @@ Follows MASTER. Actions used: `createTrip`.
 
 ```
 Dil Chahta Hai                          ← wordmark
-Plan the trip                           ← h1 (Calistoga)
+Plan the trip                           ← h1 (Fredoka)
 One link for everyone. Everyone adds    ← muted intro, 2 lines max
 their dates and budget; the app ranks the options.
 

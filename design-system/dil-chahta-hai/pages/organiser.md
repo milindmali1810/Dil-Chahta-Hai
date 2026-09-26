@@ -14,7 +14,7 @@ Share                                   h2
 Who has answered                        h2  (same StatusRows as trip home)
 
 Results                                 h2 + Badge
- [ResultCard] each with [ Mark as final ]   accent Button → ConfirmDialog "Mark {Goa, 12–16 Dec} as the final choice? Friends' answers will lock."
+ [ResultCard] each with [ Mark as final ]   decision (sea-blue) Button → ConfirmDialog "Mark {Goa, 12–16 Dec} as the final choice? Friends' answers will lock."
 
 Trip controls                           h2
  [ Lock now ]         danger-outline → ConfirmDialog "Lock now? Friends can't edit until you unlock."
