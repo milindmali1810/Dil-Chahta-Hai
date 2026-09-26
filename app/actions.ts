@@ -15,6 +15,7 @@ import { computeResults } from "@/lib/scoring";
 import {
   checkPin,
   clearName,
+  currentDeviceId,
   newDeviceId,
   newOrganiserToken,
   newPin,
@@ -129,7 +130,9 @@ export async function enterPin(tripId: string, pin: string): Promise<Done> {
     if (result.outcome === "no_trip") return fail(GUARD_MESSAGES.no_trip);
     if (result.outcome !== "ok") return fail(pinOutcomeMessage(result));
     // pinVersion comes from the same atomic check, so a PIN change mid-request can't mint a stale cookie.
-    await setJoinCookie({ tripId: trip.id, pinVersion: result.pinVersion, deviceId: newDeviceId() });
+    // Keep this phone's device ID if it already had one (e.g. re-entering after a PIN change).
+    const deviceId = (await currentDeviceId(trip.id)) ?? newDeviceId();
+    await setJoinCookie({ tripId: trip.id, pinVersion: result.pinVersion, deviceId });
     return { ok: true };
   } catch {
     return fail("Couldn't check the PIN. Check your connection and try again.");

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { DEALBREAKER_TAGS } from "@/lib/scoring";
+import { DEALBREAKER_TAGS, MAX_WINDOW_DAYS } from "@/lib/scoring";
 import type {
   DateWindow,
   DealbreakerTag,
@@ -301,20 +301,6 @@ export async function upsertResponse(
   return responseFromRow(data as ResponseRow);
 }
 
-/** Wrong-name guard, "Yes": the saved answers now belong to this device. */
-export async function setResponseDeviceId(
-  tripId: string,
-  participantName: string,
-  deviceId: string,
-): Promise<void> {
-  const { error } = await getDb()
-    .from("responses")
-    .update({ device_id: deviceId })
-    .eq("trip_id", tripId)
-    .eq("participant_name", participantName);
-  if (error) fail("setResponseDeviceId", error);
-}
-
 async function updateTrip(what: string, tripId: string, patch: Partial<TripRow>): Promise<void> {
   const { error } = await getDb().from("trips").update(patch).eq("id", tripId);
   if (error) fail(what, error);
@@ -573,6 +559,8 @@ export function parseCreateTripInput(input: unknown, now: Date): Parsed<CreateTr
       return bad(`Date option ${n} has a date that doesn't exist.`);
     }
     if (start > end) return bad(`In date option ${n}, the end date is before the start date.`);
+    const days = (Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000 + 1;
+    if (days > MAX_WINDOW_DAYS) return bad(`Date option ${n} is longer than a year. Check the years.`);
     windows.push({ id: `w${n}`, label: windowLabel(start, end), start, end });
   }
 

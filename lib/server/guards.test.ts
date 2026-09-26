@@ -27,7 +27,15 @@ import {
   signPayload,
   verifyPayload,
 } from "@/lib/server/access";
-import { canSave, getDb, getTrip, toDeadlineIso, tryPin, type Trip } from "@/lib/server/data";
+import {
+  canSave,
+  getDb,
+  getTrip,
+  parseCreateTripInput,
+  toDeadlineIso,
+  tryPin,
+  type Trip,
+} from "@/lib/server/data";
 
 const SESSION_SECRET = "test-secret-that-is-at-least-32-characters-long";
 
@@ -242,6 +250,32 @@ describe("migration ↔ code: dealbreaker tags", () => {
     );
     expect(lists).toHaveLength(2);
     for (const list of lists) expect(list).toEqual([...DEALBREAKER_TAGS].sort());
+  });
+});
+
+describe("trip creation and scoring agree on window length", () => {
+  const input = (end: string) => ({
+    tripName: "Goa",
+    participantNames: ["Asha", "Bilal"],
+    windows: [
+      { start: "2026-12-12", end },
+      { start: "2026-12-20", end: "2026-12-24" },
+      { start: "2027-01-10", end: "2027-01-12" },
+    ],
+    deadlineDate: "2026-09-30",
+    deadlineTime: "21:00",
+  });
+  const now = new Date("2026-09-25T12:00:00+05:30");
+
+  it("accepts a window of exactly 366 days", () => {
+    expect(parseCreateTripInput(input("2027-12-12"), now).ok).toBe(true);
+  });
+
+  it("refuses a window longer than a year (e.g. a mistyped year) with a plain message", () => {
+    expect(parseCreateTripInput(input("2027-12-16"), now)).toEqual({
+      ok: false,
+      message: "Date option 1 is longer than a year. Check the years.",
+    });
   });
 });
 

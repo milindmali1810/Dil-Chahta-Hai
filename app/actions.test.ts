@@ -207,6 +207,7 @@ vi.mock("@/lib/server/access", async (importOriginal) => ({
   setJoinCookie: vi.fn(),
   clearName: vi.fn(),
   checkPin: vi.fn(),
+  currentDeviceId: vi.fn(),
 }));
 
 vi.mock("@/lib/server/data", async (importOriginal) => ({
@@ -458,6 +459,19 @@ describe("enterPin", () => {
     const cookie = m(access.setJoinCookie).mock.calls[0][0];
     expect(cookie).toEqual({ tripId: "trip_abc", pinVersion: 4, deviceId: expect.any(String) });
     expect(cookie.deviceId.length).toBeGreaterThanOrEqual(20);
+  });
+
+  it("re-entering the PIN on the same phone keeps its device ID (no false 'Is this really you?')", async () => {
+    m(data.getTrip).mockResolvedValue(trip());
+    m(access.checkPin).mockResolvedValue({ outcome: "ok", pinVersion: 4 });
+    m(access.currentDeviceId).mockResolvedValue("device-1");
+    expect(await actions.enterPin("trip_abc", "042917")).toEqual({ ok: true });
+    expect(access.currentDeviceId).toHaveBeenCalledWith("trip_abc");
+    expect(m(access.setJoinCookie).mock.calls[0][0]).toEqual({
+      tripId: "trip_abc",
+      pinVersion: 4,
+      deviceId: "device-1",
+    });
   });
 
   it("wrong and paused outcomes → plain messages, no cookie", async () => {

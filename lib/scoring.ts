@@ -129,8 +129,11 @@ function dayNumber(date: string): number {
   return Date.UTC(y, m - 1, d) / MS_PER_DAY;
 }
 
-/** Longest window we'll score; anything longer is bad data (and would make the day loop slow). */
-const MAX_WINDOW_DAYS = 366;
+/**
+ * Longest window we'll score; anything longer is bad data (and would make the day loop slow).
+ * Trip creation refuses longer windows using this same constant.
+ */
+export const MAX_WINDOW_DAYS = 366;
 
 /**
  * A window is usable only if both ends are real calendar dates, start ≤ end,

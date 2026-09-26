@@ -116,9 +116,9 @@ An **option** is one destination plus one candidate date window: 10 destinations
   - Anything already saved under the wrong name still stays until its real owner overwrites it. The status page's "last updated" time shows it happened. *(Accepted risk: until then, those answers count in the results and in "N of 5".)*
 - **Wrong-name guard.** Each phone gets a random device ID, saved with that person's answers.
   - If someone picks a name whose answers were saved under a *different* device ID, the app asks once: "Bilal's answers were saved in a different session. Is this really you?"
-  - **Yes** switches the saved device ID to this one. The form then opens with everything pre-filled **except the budget, which must be typed again**, so a mis-tap never reveals a friend's number.
+  - **Yes** sets the name on this phone. The form then opens with everything pre-filled **except the budget, which must be typed again**, so a mis-tap never reveals a friend's number. The saved answers move to this phone's device ID only when they **save** (review checkpoint 1: moving it on "Yes" would have shown the saved budget on the next load).
   - **No** goes back to the name picker and changes nothing: not the cookie and not the saved device ID.
-  - If the original phone is used later, it asks once again, in the same way.
+  - Re-entering the PIN on the same phone (e.g. after the PIN is regenerated) keeps the phone's device ID, so it doesn't trigger this question. If the original phone is used after someone else saved from another phone, its budget field is blank until retyped.
   - On a shared phone, the real owner is also asked (and retypes the budget) after any Switch. That's intended: it's the price of never showing one friend's budget to another.
 - **PIN try limit.** Wrong PINs are counted per trip, and the count goes up in a single database update so two tries at once can't both slip through.
   - After 10 wrong tries, entry pauses for 15 minutes with the message "Too many wrong tries. Try again in N minutes."

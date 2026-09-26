@@ -208,6 +208,18 @@ export async function requireParticipant(
   return { ...decision, trip: participantView(trip!), payload: payload! };
 }
 
+/**
+ * The device ID from this phone's signed cookie for the trip, even if the cookie
+ * was issued under an old PIN version; null if there's no valid cookie. Re-entering
+ * the PIN keeps the phone's identity, so the "Is this really you?" check only fires
+ * after Switch or on a genuinely different phone.
+ */
+export async function currentDeviceId(tripId: string): Promise<string | null> {
+  const store = await cookies();
+  const payload = verifyPayload(store.get(cookieName(tripId))?.value);
+  return payload && payload.tripId === tripId ? payload.deviceId : null;
+}
+
 export type OrganiserAccess =
   | { ok: true; trip: Trip }
   | { ok: false; reason: "no_trip" | "bad_token" };
