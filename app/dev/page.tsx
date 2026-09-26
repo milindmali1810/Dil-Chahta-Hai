@@ -103,7 +103,9 @@ const RESULTS_NO_DESTINATIONS = computeResults({
 const CHOSEN = { destinationId: "goa", windowId: "w1" };
 
 const HEADER_PHOTOS = [PHOTOS.goa, PHOTOS.ladakh, PHOTOS.santorini];
-const CARD_PHOTOS = [...RESULTS.shown, ...RESULTS_PASSING.shown].map((o) => destinationPhoto(o.destinationId));
+const CARD_PHOTOS = [...RESULTS.shown, ...RESULTS_PASSING.shown]
+  .map((o) => destinationPhoto(o.destinationId))
+  .filter((p) => p !== null);
 
 const BUTTONS: ButtonVariant[] = ["primary", "secondary", "quiet", "decision", "danger-outline"];
 const BADGES: BadgeTone[] = [

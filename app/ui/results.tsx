@@ -40,9 +40,14 @@ export function ResultCard({ option, position, international, chosen = false, ac
       className={`overflow-hidden rounded-card shadow-card ${flagged ? "bg-warning-soft" : "bg-card"} ${frame}`}
       aria-label={`Option ${position}: ${option.destinationName}, ${option.windowLabel}`}
     >
-      <div className="relative h-28 w-full bg-primary-soft">
-        <Image src={photo.src} alt={photo.place} fill loading="lazy" sizes={CARD_SIZES} className="object-cover" />
-      </div>
+      {photo ? (
+        <div className="relative h-28 w-full bg-primary-soft">
+          <Image src={photo.src} alt={photo.place} fill loading="lazy" sizes={CARD_SIZES} className="object-cover" />
+        </div>
+      ) : (
+        // No photo of this exact place: a plain sunset band instead of someone else's photo.
+        <div className="sunset-stripe h-2 w-full" aria-hidden="true" />
+      )}
       <div className="flex flex-col gap-3 p-4 min-[400px]:p-5">
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-fg px-2.5 py-0.5 text-sm leading-5 font-bold text-white">

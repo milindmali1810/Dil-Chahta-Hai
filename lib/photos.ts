@@ -109,9 +109,9 @@ export const PHOTOS: Record<PhotoKey, Photo> = {
 export const HEADER_ROTATION: PhotoKey[] = ["goa", "ladakh", "jaipur", "kerala", "andaman", "santorini", "bali", "alps"];
 
 /**
- * Photo for a destination row. Destination ids come from the hand-checked sheet
- * (002_destinations.sql); add an entry here when a destination has its own photo.
- * Destinations without one get a stable pick from the rotation.
+ * Photo for a destination row, when its id isn't itself a photo key
+ * (e.g. a destination "palolem" could map to "goa"). Destination ids come from
+ * the hand-checked sheet (002_destinations.sql).
  */
 export const DESTINATION_PHOTOS: Partial<Record<string, PhotoKey>> = {};
 
@@ -122,9 +122,13 @@ export function pickPhoto(seed: string): Photo {
   return PHOTOS[HEADER_ROTATION[h % HEADER_ROTATION.length]];
 }
 
-export function destinationPhoto(destinationId: string): Photo {
-  const key = DESTINATION_PHOTOS[destinationId];
-  return key ? PHOTOS[key] : pickPhoto(destinationId);
+/**
+ * The photo of THIS destination, or null. Never a random other place: a Ladakh
+ * photo on the Goa card would be misleading, so unmatched cards show no photo.
+ */
+export function destinationPhoto(destinationId: string): Photo | null {
+  const key = DESTINATION_PHOTOS[destinationId] ?? (destinationId in PHOTOS ? (destinationId as PhotoKey) : undefined);
+  return key ? PHOTOS[key] : null;
 }
 
 /** One-line credit, e.g. "Oia, Santorini: Anna.Tsolidou, CC BY-SA 4.0". */
