@@ -543,6 +543,14 @@ describe("parseCreateTripInput", () => {
     expect(message({ windows: [w("2026-12-16", "2026-12-12"), three[1], three[2]] })).toBe(
       "In date option 1, the end date is before the start date.",
     );
+    // Today is 25 Sep 2026 (IST): an option starting today is fine, yesterday is not.
+    expect(message({ windows: [w("2026-09-25", "2026-09-27"), three[1], three[2]] })).toBeNull();
+    expect(message({ windows: [w("2026-09-24", "2026-09-27"), three[1], three[2]] })).toBe(
+      "Date option 1 starts in the past.",
+    );
+    expect(message({ windows: [three[0], three[1], three[0]] })).toBe(
+      "Date option 3 is the same as another option.",
+    );
   });
 
   it("deadline: a real date and time, in the future", () => {

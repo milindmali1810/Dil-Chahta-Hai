@@ -552,6 +552,9 @@ export function parseCreateTripInput(input: unknown, now: Date): Parsed<CreateTr
     return bad(`Add ${WINDOWS_MIN} or ${WINDOWS_MAX} date options.`);
   }
   const windows: DateWindow[] = [];
+  // Today's date in IST (YYYY-MM-DD), so a date option can't start in the past.
+  const todayIst = new Date(now.getTime() + 330 * 60_000).toISOString().slice(0, 10);
+  const seenWindows = new Set<string>();
   for (const [i, raw] of rawWindows.entries()) {
     const n = i + 1;
     const start = isRecord(raw) ? raw.start : undefined;
@@ -565,6 +568,9 @@ export function parseCreateTripInput(input: unknown, now: Date): Parsed<CreateTr
     if (start > end) return bad(`In date option ${n}, the end date is before the start date.`);
     const days = (Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000 + 1;
     if (days > MAX_WINDOW_DAYS) return bad(`Date option ${n} is longer than a year. Check the years.`);
+    if (start < todayIst) return bad(`Date option ${n} starts in the past.`);
+    if (seenWindows.has(`${start}/${end}`)) return bad(`Date option ${n} is the same as another option.`);
+    seenWindows.add(`${start}/${end}`);
     windows.push({ id: `w${n}`, label: windowLabel(start, end), start, end });
   }
 

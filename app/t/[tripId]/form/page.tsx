@@ -3,6 +3,8 @@
 import { redirect } from "next/navigation";
 import { requireParticipant, type ParticipantTrip } from "@/lib/server/access";
 import { canSave, formatDeadlineIst, getResponses } from "@/lib/server/data";
+import { loadTripView, type TripView } from "@/lib/server/trip-view";
+import { DecisionBanner } from "@/app/ui/decision-banner";
 import { Page } from "@/app/ui/page-shell";
 import { PhotoHeader } from "@/app/ui/photo-header";
 import { lockReason, tripHeaderPhoto } from "../helpers";
@@ -14,7 +16,14 @@ import { prefillFor, type Prefill } from "./answers";
 type Loaded =
   | { kind: "error" }
   | { kind: "not_joined" }
-  | { kind: "ok"; trip: ParticipantTrip; name: string; prefill: Prefill; locked: string | null };
+  | {
+      kind: "ok";
+      trip: ParticipantTrip;
+      name: string;
+      prefill: Prefill;
+      locked: string | null;
+      chosen: TripView["chosen"];
+    };
 
 /** Everything that touches the database, so a failure becomes a friendly page, not a crash. */
 async function load(tripId: string): Promise<Loaded> {
@@ -25,12 +34,15 @@ async function load(tripId: string): Promise<Loaded> {
     // Only this person's own row is used, and prefillFor drops the budget unless it was
     // saved from this session: no one else's answers reach the page.
     const saved = (await getResponses(trip.id)).find((r) => r.name === name) ?? null;
+    // "Decided: …" on every trip page once the organiser marks a final choice.
+    const chosen = trip.finalDestinationId ? (await loadTripView(trip, new Date())).chosen : null;
     return {
       kind: "ok",
       trip,
       name,
       prefill: prefillFor(saved, deviceId),
       locked: lockReason(canSave(trip, new Date())),
+      chosen,
     };
   } catch {
     return { kind: "error" };
@@ -44,7 +56,7 @@ export default async function AnswersPage({ params }: PageProps<"/t/[tripId]/for
   // Outside the try: redirect() works by throwing.
   if (loaded.kind === "not_joined") redirect(`/t/${encodeURIComponent(tripId)}`);
 
-  const { trip, name, prefill, locked } = loaded;
+  const { trip, name, prefill, locked, chosen } = loaded;
   const photo = tripHeaderPhoto(trip);
   return (
     <Page header={<PhotoHeader photo={photo} title="Your answers" subtitle={trip.name} />} creditPhotos={[photo]}>
@@ -52,6 +64,7 @@ export default async function AnswersPage({ params }: PageProps<"/t/[tripId]/for
         <SwitchRow tripId={trip.id} name={name} backToHome />
         <p className="text-sm leading-5 text-muted-fg">Answers lock {formatDeadlineIst(trip.deadline)}</p>
       </div>
+      {chosen && <DecisionBanner destinationName={chosen.destinationName} windowLabel={chosen.windowLabel} />}
       <AnswersForm
         tripId={trip.id}
         name={name}

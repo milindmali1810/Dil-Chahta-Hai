@@ -261,7 +261,7 @@ export function TripControls({
         onConfirm={() => {
           setBusy("lock");
           run(() => lockEarly(tripId, token), {
-            success: () => "Locked. Friends can't edit until you unlock.",
+            success: () => "Locked.",
             settled,
           });
         }}
