@@ -1,0 +1,116 @@
+<title>Dil Chahta Hai Component Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800&display=swap">
+<style>
+  :root {
+    --page: #EDEAE4; --sheet: #FFFFFF; --bar: #1F1D1A; --bar-fg: #FFFFFF;
+    --ink: #1F1D1A; --muted: #6B6660; --faint: #A8A39C; --line: #D9D5CF; --rule: #BDB8B1;
+    --dot: #16A34A; --off-bg: #F6F4F1; --chip: #F1EEE9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #121110; --sheet: #1C1B19; --bar: #000000; --bar-fg: #F5F3EF;
+      --ink: #F2EFEA; --muted: #B3ADA5; --faint: #7A756E; --line: #34312D; --rule: #4A4641;
+      --dot: #22C55E; --off-bg: #232120; --chip: #2A2826;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #121110; --sheet: #1C1B19; --bar: #000000; --bar-fg: #F5F3EF;
+    --ink: #F2EFEA; --muted: #B3ADA5; --faint: #7A756E; --line: #34312D; --rule: #4A4641;
+    --dot: #22C55E; --off-bg: #232120; --chip: #2A2826;
+  }
+  body { background: var(--page); color: var(--ink); font: 13px/1.5 "Archivo", "Helvetica Neue", Arial, sans-serif; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; padding-block: 32px 48px; }
+  .scroll { overflow-x: auto; border-radius: 14px; box-shadow: 0 10px 30px rgb(0 0 0 / .12); }
+  .sheet { min-width: 1040px; background: var(--sheet); border-radius: 14px; overflow: hidden; }
+  .bar { background: var(--bar); color: var(--bar-fg); text-align: center; font-weight: 700; font-size: 17px;
+         letter-spacing: .12em; text-transform: uppercase; padding: 13px 16px; }
+  table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+  col.who { width: 150px; }
+  thead th { font-weight: 800; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; padding: 20px 10px 14px;
+             position: relative; border-bottom: 2px solid var(--rule); }
+  thead th:not(:first-child)::after { content: ""; position: absolute; left: 50%; bottom: -7px; width: 12px; height: 12px;
+             margin-left: -6px; border-radius: 50%; background: var(--dot); }
+  th, td { border-right: 1px solid var(--line); }
+  th:last-child, td:last-child { border-right: 0; }
+  tbody tr + tr > * { border-top: 1px solid var(--line); }
+  tbody th { text-align: center; padding: 18px 10px; font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: .02em; line-height: 1.3; }
+  tbody th small { display: block; font-weight: 400; text-transform: none; color: var(--muted); font-size: 13px; letter-spacing: 0; margin-top: 2px; }
+  td { vertical-align: top; padding: 16px 14px 18px; color: var(--ink); }
+  td ul { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 4px; }
+  td b { font-weight: 700; }
+  .code { font: 500 11.5px ui-monospace, Consolas, monospace; background: var(--chip); padding: 1px 5px; border-radius: 4px; white-space: nowrap; }
+  tr.off th, tr.off th small { color: var(--faint); }
+  tr.off td { background: var(--off-bg); color: var(--muted); }
+  td.span { text-align: center; vertical-align: middle; font-size: 14px; padding: 26px 20px; }
+  td.span b { color: var(--ink); }
+  .foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 20px; color: var(--muted); padding-top: 14px; font-size: 12.5px; }
+  .foot a { color: var(--ink); font-weight: 700; }
+</style>
+
+<div class="wrap">
+  <div class="scroll">
+    <div class="sheet">
+      <div class="bar">Section A — Group Trip Planner</div>
+      <table>
+        <colgroup><col class="who"><col><col><col><col><col></colgroup>
+        <thead>
+          <tr><th scope="col"><span class="sr-only"></span></th><th scope="col">Trigger</th><th scope="col">Input</th><th scope="col">Context</th><th scope="col">Processing</th><th scope="col">Output</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Riya<small>(Coordinator)</small></th>
+            <td>The group chat can't agree on a trip. Riya opens <b>dil-chahta-hai.vercel.app</b>.</td>
+            <td><ul><li>Trip name</li><li>Names of all 5 people</li><li>3–4 date options</li><li>Answer deadline (IST)</li></ul></td>
+            <td>No account needed. She gets a <b>private organiser link</b>, which is the only way to lock or finalise the trip.</td>
+            <td><ul><li>Shares trip link + 6-digit PIN on WhatsApp</li><li>Watches who has answered</li><li>Can lock early, unlock, or make a new PIN</li></ul></td>
+            <td>Taps <b>Mark as final</b> on the winner. Everyone sees <b>"Decided: Goa, 10–14 Nov"</b> and answers lock.</td>
+          </tr>
+          <tr>
+            <th scope="row">Friends<small>(x 4)</small></th>
+            <td>Trip link and PIN arrive in the WhatsApp group.</td>
+            <td><ul><li>PIN, then "Who are you?"</li><li>Budget per person (₹)</li><li>Dates that work</li><li>Trip type: beach, hills, city, adventure</li><li>Deal-breakers: international, trekking, overnight journey</li></ul></td>
+            <td><ul><li>Costs assume travel from Pune</li><li>Their exact budget is never shown to the group</li><li>Answers can be edited until the deadline</li></ul></td>
+            <td>Save answers. "Switch" fixes a wrong name; "Is this really you?" protects someone else's answers.</td>
+            <td>See who has answered and the <b>top 3 options</b>, each with a photo, cost and plain reasons (e.g. "Asha: over budget").</td>
+          </tr>
+          <tr>
+            <th scope="row">Trip Planner App<small>(Next.js on Vercel)</small></th>
+            <td>A page opens or a button is pressed (a server action).</td>
+            <td>Form data + the friend's signed PIN cookie, or Riya's organiser link.</td>
+            <td><ul><li>Checks access before anything else</li><li>Deadline, early lock and final choice</li><li>10 destinations from Pune</li></ul></td>
+            <td><b>Floor, then average:</b> an option fails if anyone is blocked, over budget or scores under 40. Passing options rank by group average, then lowest score, then cost.</td>
+            <td>Ranked result cards with Domestic / International badges, "Provisional" or "Locked" label. No budgets in the page.</td>
+          </tr>
+          <tr class="off">
+            <th scope="row">Gemini<small>(LLM)</small></th>
+            <td class="span" colspan="5"><b>Not used in this build.</b> Ranking is a fixed, explainable rule, so every friend can see why an option won or was flagged. No AI calls, no API key, no running cost.</td>
+          </tr>
+          <tr>
+            <th scope="row">Supabase<small>(Database)</small></th>
+            <td>A request from the app's server. The browser never talks to the database.</td>
+            <td>New trip, a friend's answers, or a PIN attempt.</td>
+            <td>Tables <span class="code">trips</span> <span class="code">responses</span> <span class="code">destinations</span>. Row-level security on, no public access. Mumbai region.</td>
+            <td><span class="code">try_pin()</span> locks the trip row per attempt: 10 wrong tries, then a 15-minute pause. Answers are saved or updated.</td>
+            <td>Saved rows go back to the server only.</td>
+          </tr>
+          <tr>
+            <th scope="row">Other API<small>(Vercel Cron)</small></th>
+            <td>Once a day, on a schedule.</td>
+            <td>A secret token (<span class="code">CRON_SECRET</span>).</td>
+            <td>Free Supabase projects pause after a week without use.</td>
+            <td><span class="code">/api/keepalive</span> runs one tiny query.</td>
+            <td>The database stays awake, so a trip link never opens to an error.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="foot">
+    <span>Dil Chahta Hai · component map · built 25–27 Sep 2026</span>
+    <span>Live: <a href="https://dil-chahta-hai.vercel.app" target="_blank" rel="noreferrer">dil-chahta-hai.vercel.app</a></span>
+  </div>
+</div>
