@@ -1,0 +1,364 @@
+<title>Dil Chahta Hai Build Notes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+  :root {
+    --bg: #FFF7ED; --card: #FFFFFF; --fg: #431407; --muted: #7C4A2D; --border: #F1D5BE;
+    --primary: #C2410C; --primary-soft: #FFEDD5; --sea: #0369A1; --sea-soft: #E0F2FE;
+    --leaf: #15803D; --leaf-soft: #DCFCE7; --sun: #B45309; --sun-soft: #FEF3C7;
+    --shadow: 0 1px 2px rgb(67 20 7 / .06), 0 6px 18px rgb(67 20 7 / .06);
+    --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+    --body: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #1A0E08; --card: #26160E; --fg: #FFEDD5; --muted: #D9B79E; --border: #4A2B1B;
+      --primary: #FB923C; --primary-soft: #3A1C0E; --sea: #38BDF8; --sea-soft: #0B2A3C;
+      --leaf: #4ADE80; --leaf-soft: #0F2E1B; --sun: #FBBF24; --sun-soft: #3A2A0A;
+      --shadow: 0 1px 2px rgb(0 0 0 / .4);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #1A0E08; --card: #26160E; --fg: #FFEDD5; --muted: #D9B79E; --border: #4A2B1B;
+    --primary: #FB923C; --primary-soft: #3A1C0E; --sea: #38BDF8; --sea-soft: #0B2A3C;
+    --leaf: #4ADE80; --leaf-soft: #0F2E1B; --sun: #FBBF24; --sun-soft: #3A2A0A;
+    --shadow: 0 1px 2px rgb(0 0 0 / .4);
+  }
+
+  body { background: var(--bg); color: var(--fg); font: 16px/1.6 var(--body); }
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 0 72px; }
+  .stripe { height: 6px; background: linear-gradient(90deg, #F43F5E, #F97316, #FBBF24); }
+  h1, h2, h3 { font-family: var(--display); font-weight: 600; text-wrap: balance; line-height: 1.2; margin: 0; }
+  h2 { font-size: 1.75rem; }
+  h3 { font-size: 1.1rem; font-weight: 500; }
+  p { margin: 0; }
+  a { color: var(--sea); font-weight: 700; }
+  a:focus-visible, button:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; border-radius: 6px; }
+  code, .mono { font-family: var(--mono); font-size: .82em; }
+  section { display: flex; flex-direction: column; gap: 18px; padding-top: 56px; }
+  .lede { color: var(--muted); max-width: 64ch; }
+  .eyebrow { font-weight: 800; font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--primary); }
+
+  /* Hero */
+  header.hero { display: flex; flex-direction: column; gap: 18px; padding-top: 44px; }
+  .hero h1 { font-size: clamp(2.2rem, 6vw, 3.4rem); }
+  .hero h1 span { color: var(--primary); }
+  .live { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; background: var(--card); border: 2px solid var(--sea);
+          border-radius: 18px; padding: 16px 18px; box-shadow: var(--shadow); }
+  .live .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--leaf); box-shadow: 0 0 0 4px var(--leaf-soft); flex: none; }
+  .live .label { font-weight: 800; }
+  .live a { font-family: var(--display); font-size: 1.25rem; font-weight: 500; word-break: break-all; }
+  .live button { margin-left: auto; font: 700 .9rem var(--body); color: #fff; background: var(--primary); border: 0; border-radius: 12px;
+                 padding: 10px 16px; min-height: 44px; cursor: pointer; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .stat { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; }
+  .stat b { display: block; font-family: var(--display); font-size: 1.6rem; font-weight: 600; color: var(--primary); font-variant-numeric: tabular-nums; }
+  .stat span { color: var(--muted); font-size: .9rem; }
+
+  /* Timeline */
+  .timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0; }
+  .timeline li { display: grid; grid-template-columns: 92px 1fr; gap: 16px; position: relative; padding-bottom: 22px; }
+  .timeline li::before { content: ""; position: absolute; left: 97px; top: 10px; bottom: -4px; width: 2px; background: var(--border); }
+  .timeline li:last-child::before { display: none; }
+  .when { font-weight: 800; font-size: .8rem; color: var(--muted); padding-top: 3px; text-align: right; }
+  .step { position: relative; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+  .step::before { content: ""; position: absolute; left: -1px; top: 7px; width: 12px; height: 12px; border-radius: 50%;
+                  background: var(--primary); box-shadow: 0 0 0 4px var(--bg); }
+  .step p { color: var(--muted); max-width: 70ch; }
+  .tag { display: inline-block; font: 600 .72rem var(--mono); background: var(--primary-soft); color: var(--primary);
+         border-radius: 6px; padding: 1px 6px; margin-right: 4px; }
+
+  /* Decisions */
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .decision { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 8px; }
+  .decision .was { font-size: .88rem; color: var(--muted); }
+  .decision .now { font-weight: 700; }
+
+  /* Tools table */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; }
+  th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-size: .75rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 800; white-space: nowrap; }
+
+  /* Component map */
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .flow .f { background: var(--card); border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; font-weight: 700; font-size: .9rem; }
+  .flow .f.org { border-color: var(--primary); color: var(--primary); }
+  .flow .f.fr { border-color: var(--sea); color: var(--sea); }
+  .flow .arrow { color: var(--muted); }
+  .map { display: flex; flex-direction: column; gap: 0; border-radius: 22px; overflow: hidden; border: 1px solid var(--border); background: var(--card); box-shadow: var(--shadow); }
+  .layer { display: grid; grid-template-columns: 170px 1fr; gap: 18px; padding: 20px; }
+  .layer + .layer { border-top: 1px solid var(--border); }
+  .layer.browser { background: var(--primary-soft); }
+  .layer.server { background: var(--card); }
+  .layer.data { background: var(--sea-soft); }
+  .layer-name { display: flex; flex-direction: column; gap: 4px; }
+  .layer-name h3 { font-size: 1.05rem; }
+  .layer-name p { font-size: .82rem; color: var(--muted); }
+  .boundary { display: flex; align-items: center; gap: 12px; padding: 10px 20px; background: var(--bg); border-top: 2px dashed var(--primary);
+              border-bottom: 2px dashed var(--primary); font-weight: 800; font-size: .85rem; color: var(--primary); }
+  .boundary svg { flex: none; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .node { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .layer.server .node { background: var(--bg); }
+  .node .route { font: 500 .78rem var(--mono); color: var(--primary); }
+  .node h4 { margin: 0; font-family: var(--display); font-weight: 500; font-size: 1.05rem; }
+  .node p { font-size: .88rem; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font: 500 .74rem var(--mono); padding: 3px 8px; border-radius: 7px; background: var(--primary-soft); color: var(--fg); border: 1px solid var(--border); }
+  .chip.f { background: var(--sea-soft); }
+  .chip.o { background: var(--sun-soft); }
+  .chip.p { background: var(--leaf-soft); }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: .82rem; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 12px; height: 12px; border-radius: 4px; border: 1px solid var(--border); display: inline-block; }
+  .steps-mini { font-size: .85rem; color: var(--muted); }
+  .steps-mini b { color: var(--fg); }
+
+  .rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .rule { border-left: 4px solid var(--leaf); background: var(--card); border-radius: 0 12px 12px 0; padding: 12px 14px; font-size: .92rem; }
+  .run { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .run code { background: var(--primary-soft); padding: 2px 6px; border-radius: 6px; }
+  footer { padding-top: 56px; color: var(--muted); font-size: .85rem; }
+
+  @media (max-width: 640px) {
+    .layer { grid-template-columns: 1fr; }
+    .timeline li { grid-template-columns: 64px 1fr; gap: 10px; }
+    .timeline li::before { left: 69px; }
+    .live button { margin-left: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="stripe" aria-hidden="true"></div>
+<div class="wrap">
+
+<header class="hero">
+  <p class="eyebrow">Build notes · 25–27 Sep 2026</p>
+  <h1>How <span>Dil Chahta Hai</span> was built</h1>
+  <p class="lede">A group trip decision tool for friends in India. The organiser shares one link and a PIN in WhatsApp. Everyone adds their budget, dates, trip type and deal-breakers. The app ranks 10 destinations from Pune so that nobody gets a trip they can't afford or hate, and the organiser marks the final choice.</p>
+  <div class="live">
+    <span class="dot" aria-hidden="true"></span>
+    <span class="label">Live:</span>
+    <a id="live-link" href="https://dil-chahta-hai.vercel.app" target="_blank" rel="noreferrer">dil-chahta-hai.vercel.app</a>
+    <button id="copy-link" type="button">Copy link</button>
+  </div>
+  <div class="stats">
+    <div class="stat"><b>3 days</b><span>from brief to live app</span></div>
+    <div class="stat"><b>29</b><span>commits on <code>main</code></span></div>
+    <div class="stat"><b>243</b><span>automated tests, all passing</span></div>
+    <div class="stat"><b>~8,000</b><span>lines of TypeScript</span></div>
+    <div class="stat"><b>10</b><span>destinations, costed from Pune</span></div>
+  </div>
+</header>
+
+<section id="stack">
+  <p class="eyebrow">What it runs on</p>
+  <h2>The stack</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Piece</th><th>Used for</th></tr></thead>
+      <tbody>
+        <tr><td>Next.js 16.3 + React 19</td><td>The website and its server code together (App Router, Server Actions). Pages render on the server, so the phone gets finished HTML.</td></tr>
+        <tr><td>Tailwind CSS 4</td><td>Styling through design tokens: cream background, sunset-orange buttons, Goa-sea blue for decisions and focus rings.</td></tr>
+        <tr><td>Fredoka + Nunito</td><td>Rounded, friendly display font for headings; readable body font.</td></tr>
+        <tr><td>Supabase (Postgres, Mumbai)</td><td>Stores trips, answers and the 10 destinations. Row-level security is on with no public access; only the server's secret key can read or write.</td></tr>
+        <tr><td>Vercel (Mumbai, <code>bom1</code>)</td><td>Hosting. Every push to <code>main</code> on GitHub goes live in about 2 minutes. A daily cron job keeps the free database awake.</td></tr>
+        <tr><td>Vitest 5</td><td>243 tests: the ranking maths, input checks, PIN and cookie rules, and a test that fails if any server action forgets its security check.</td></tr>
+        <tr><td>Wikimedia Commons</td><td>10 holiday photos under CC BY / BY-SA, resized to WebP/AVIF, credited at the bottom of every page.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="how">
+  <p class="eyebrow">How the work was done</p>
+  <h2>From brief to live, step by step</h2>
+  <p class="lede">Claude Code (Opus) did the building. The owner made every product decision; the gstack skills gave each phase a fixed routine: think, plan, build, review, test, ship.</p>
+  <ol class="timeline">
+    <li><span class="when">25 Sep</span><div class="step"><h3>Office hours: challenge the brief</h3><p><span class="tag">/office-hours</span> The scope was fixed by the brief. Only two questions were challenged: how to rank options fairly, and how to keep access simple without accounts. The result was a design doc that overrides the PRD where they differ.</p></div></li>
+    <li><span class="when">25 Sep</span><div class="step"><h3>Engineering plan</h3><p><span class="tag">/plan-eng-review</span> Locked the architecture: 14 files, all database access on the server, every action behind a guard, Supabase and Vercel both in Mumbai, Vitest for tests, and a daily keep-alive.</p></div></li>
+    <li><span class="when">25 Sep</span><div class="step"><h3>Build the engine, in parallel</h3><p>Tasks T1–T5 and T7: scaffold, database schema, ranking engine, PIN and cookie access, server actions. Independent tasks ran as parallel agents, each in its own git worktree, then were merged.</p></div></li>
+    <li><span class="when">26 Sep</span><div class="step"><h3>Review checkpoints 1 and 2</h3><p><span class="tag">/review</span> Found and fixed security gaps: PIN tries now lock the database row per attempt, regenerating the PIN also replaces the organiser link, and cookies expire on the server after 60 days.</p></div></li>
+    <li><span class="when">26 Sep</span><div class="step"><h3>Design system, three rounds</h3><p><span class="tag">ui-ux-pro-max</span> Started clean, then warmer and more playful, then "vacation vibes": big photo headers of famous Indian and world places, photo cards for results, and a Domestic / International label.</p></div></li>
+    <li><span class="when">26–27 Sep</span><div class="step"><h3>Pages, three agents at once</h3><p>A shared UI kit first, then the create page, the trip home + answers form, and the organiser page were built in parallel and merged.</p></div></li>
+    <li><span class="when">27 Sep</span><div class="step"><h3>Real data</h3><p>Supabase project created in Mumbai, schema applied, and 10 destinations loaded with costs from Pune: Goa, Jaipur, Kerala, Manali, Rishikesh, Ladakh, Andaman, Bali, Santorini, Swiss Alps.</p></div></li>
+    <li><span class="when">27 Sep</span><div class="step"><h3>Review 3 and QA, side by side</h3><p><span class="tag">/review</span><span class="tag">/qa-only</span> Four reviewers (security, correctness, design and accessibility, attacker's view) read the code while a fifth agent clicked through every page at phone size. About 20 fixes followed, each covered by tests.</p></div></li>
+    <li><span class="when">27 Sep</span><div class="step"><h3>Ship</h3><p>Code merged to <code>main</code>, imported into Vercel, tested end to end on the live URL, a demo video recorded with Playwright, and all test trips deleted from the database.</p></div></li>
+  </ol>
+</section>
+
+<section id="decisions">
+  <p class="eyebrow">The calls that shaped it</p>
+  <h2>Key decisions</h2>
+  <div class="grid2">
+    <div class="decision"><h3>Ranking: floor, then average</h3><p class="was">Brief said: rank by the worst-off person first.</p><p class="now">An option fails if anyone is blocked by a deal-breaker, is over budget, or scores under 40. Passing options rank by group average, then lowest score, then cost.</p></div>
+    <div class="decision"><h3>Access: PIN + pick your name</h3><p class="was">No accounts or passwords for friends.</p><p class="now">A 6-digit PIN (10 tries, then a 15-minute pause), a signed cookie, and an "Is this really you?" check that blanks the budget if someone else's answers are reopened.</p></div>
+    <div class="decision"><h3>Server-only database</h3><p class="was">Option: let the browser talk to Supabase.</p><p class="now">The browser never talks to the database. Every read and write goes through server code that checks the PIN cookie or the organiser link first.</p></div>
+    <div class="decision"><h3>Budgets stay private</h3><p class="was">Friends shouldn't see each other's numbers.</p><p class="now">No friend's budget ever reaches the page. Results only say "comfortable", "tight" or "over budget".</p></div>
+    <div class="decision"><h3>Deadline in IST</h3><p class="was">Phones in different time zones.</p><p class="now">The deadline is stored as 11:59:59 PM IST and checked on the server, not the phone.</p></div>
+    <div class="decision"><h3>Final choice locks answers</h3><p class="was">When does voting end?</p><p class="now">At the deadline, when the organiser locks early, or when a final choice is marked. Everyone then sees "Decided: Goa, 10–14 Nov".</p></div>
+  </div>
+</section>
+
+<section id="tools">
+  <p class="eyebrow">Tools used while building</p>
+  <h2>Toolbox</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Tool</th><th>What it did here</th></tr></thead>
+      <tbody>
+        <tr><td>Claude Code (Opus)</td><td>Wrote the code and tests, ran them, and coordinated the parallel agents.</td></tr>
+        <tr><td>gstack skills</td><td><code>/office-hours</code> (brief), <code>/plan-eng-review</code> (architecture), <code>/review</code> ×3 (code review), <code>/qa-only</code> (browser testing).</td></tr>
+        <tr><td>ui-ux-pro-max</td><td>Design system: colours, fonts, components, page blueprints in <code>design-system/</code>.</td></tr>
+        <tr><td>Parallel agents + git worktrees</td><td>Independent tasks built at the same time on separate copies of the code, then merged.</td></tr>
+        <tr><td>Supabase connector</td><td>Created the project, applied migrations, tested the PIN function, and cleaned up test data.</td></tr>
+        <tr><td>GitHub + <code>gh</code></td><td>Repo <code>milindmali1810/Dil-Chahta-Hai</code>; also used to read Vercel's deploy status.</td></tr>
+        <tr><td>Vercel</td><td>Imported from GitHub by the owner, with 4 secret settings from <code>.env.local</code>.</td></tr>
+        <tr><td>Built-in browser + Playwright</td><td>Clicked through every flow at phone size, then recorded the demo video on the live site.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="map">
+  <p class="eyebrow">Component map</p>
+  <h2>How the pieces fit</h2>
+  <div class="flow" aria-label="User journey">
+    <span class="f org">Organiser creates trip</span><span class="arrow" aria-hidden="true">→</span>
+    <span class="f org">Shares link + PIN</span><span class="arrow" aria-hidden="true">→</span>
+    <span class="f fr">Friend enters PIN</span><span class="arrow" aria-hidden="true">→</span>
+    <span class="f fr">Picks name</span><span class="arrow" aria-hidden="true">→</span>
+    <span class="f fr">Saves answers</span><span class="arrow" aria-hidden="true">→</span>
+    <span class="f fr">Sees ranked results</span><span class="arrow" aria-hidden="true">→</span>
+    <span class="f org">Marks final choice</span>
+  </div>
+  <div class="legend">
+    <span><i class="sw" style="background:var(--sea-soft)"></i>friend actions</span>
+    <span><i class="sw" style="background:var(--sun-soft)"></i>organiser actions</span>
+    <span><i class="sw" style="background:var(--leaf-soft)"></i>public actions</span>
+  </div>
+
+  <div class="map">
+    <div class="layer browser">
+      <div class="layer-name"><h3>Pages</h3><p>What people see on their phone. <code>app/</code></p></div>
+      <div class="cards">
+        <div class="node">
+          <span class="route">/</span>
+          <h4>Create trip</h4>
+          <p>Trip name, 2–10 people, 3–4 date options, deadline. Then the link, PIN and organiser link.</p>
+          <div class="chips"><span class="chip">create-trip</span><span class="chip">created-screen</span><span class="chip">create-trip-input</span></div>
+        </div>
+        <div class="node">
+          <span class="route">/t/[tripId]</span>
+          <h4>Trip home</h4>
+          <p class="steps-mini"><b>PIN</b> → <b>Who are you?</b> → <b>Home</b>: who has answered, results, Decided banner.</p>
+          <div class="chips"><span class="chip">pin-step</span><span class="chip">name-step</span><span class="chip">switch-row</span><span class="chip">status-pages</span></div>
+        </div>
+        <div class="node">
+          <span class="route">/t/[tripId]/form</span>
+          <h4>Your answers</h4>
+          <p>Budget (₹, from Pune), dates that work, trip type, deal-breakers. Locked after the deadline or a final choice.</p>
+          <div class="chips"><span class="chip">answers-form</span><span class="chip">answers</span></div>
+        </div>
+        <div class="node">
+          <span class="route">/o/[tripId]/[token]</span>
+          <h4>Organiser page</h4>
+          <p>Share, who has answered, results with Mark as final, Lock / Unlock, Regenerate PIN.</p>
+          <div class="chips"><span class="chip">organiser-controls</span><span class="chip">helpers</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="layer browser">
+      <div class="layer-name"><h3>Shared UI kit</h3><p>Reused by every page. <code>app/ui/</code></p></div>
+      <div class="chips">
+        <span class="chip">page-shell</span><span class="chip">photo-header</span><span class="chip">photo-crossfade</span><span class="chip">photo-credits</span>
+        <span class="chip">button</span><span class="chip">submit-button</span><span class="chip">fields</span><span class="chip">choice</span>
+        <span class="chip">copy-field</span><span class="chip">notice</span><span class="chip">badge</span><span class="chip">status-list</span>
+        <span class="chip">results</span><span class="chip">decision-banner</span><span class="chip">confirm-dialog</span><span class="chip">save-this-link</span>
+        <span class="chip">icons</span><span class="chip">format</span><span class="chip">error page</span>
+      </div>
+    </div>
+
+    <div class="boundary">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2" fill="none"/><path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none"/></svg>
+      Server boundary: every call re-checks the PIN cookie or the organiser link
+    </div>
+
+    <div class="layer server">
+      <div class="layer-name"><h3>Server actions</h3><p>The only doors into the server. <code>app/actions.ts</code></p></div>
+      <div class="chips">
+        <span class="chip p">createTrip</span><span class="chip p">enterPin</span>
+        <span class="chip f">pickName</span><span class="chip f">confirmName</span><span class="chip f">switchName</span><span class="chip f">saveResponse</span>
+        <span class="chip o">lockEarly</span><span class="chip o">unlock</span><span class="chip o">regeneratePinAction</span><span class="chip o">markFinal</span><span class="chip o">clearFinalAction</span>
+      </div>
+    </div>
+
+    <div class="layer server">
+      <div class="layer-name"><h3>Server rules</h3><p>Checks, queries and maths. <code>lib/</code></p></div>
+      <div class="cards">
+        <div class="node"><h4>access.ts</h4><p>PIN check with try limits, signed 60-day cookie, <code>requireParticipant</code> and <code>requireOrganiser</code>.</p></div>
+        <div class="node"><h4>data.ts</h4><p>Supabase queries and input validation: names, dates, deadline, budget.</p></div>
+        <div class="node"><h4>scoring.ts</h4><p>Pure ranking maths: floor, then average. One card per destination.</p></div>
+        <div class="node"><h4>trip-view.ts</h4><p>Builds what a trip page shows: results, status rows, header photo, decision. No budgets.</p></div>
+        <div class="node"><h4>photos.ts · trip-config.ts</h4><p>Photo list with credits; reference city Pune.</p></div>
+      </div>
+    </div>
+
+    <div class="layer data">
+      <div class="layer-name"><h3>Data and hosting</h3><p>Both in Mumbai.</p></div>
+      <div class="cards">
+        <div class="node"><h4>Supabase Postgres</h4><p>Tables <code>trips</code>, <code>responses</code>, <code>destinations</code>, plus the <code>try_pin()</code> function. No public access.</p></div>
+        <div class="node"><h4>Vercel</h4><p>Hosts the app from <code>main</code>. Daily cron calls <code>/api/keepalive</code> so the free database never sleeps.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="promises">
+  <p class="eyebrow">Checked by tests and review</p>
+  <h2>Promises the code keeps</h2>
+  <div class="rules">
+    <div class="rule">The browser never talks to the database.</div>
+    <div class="rule">No friend's budget amount ever appears on a page.</div>
+    <div class="rule">Every server action checks access first; a test fails if one doesn't.</div>
+    <div class="rule">Only the trip name is visible before the PIN is entered.</div>
+    <div class="rule">A lost connection shows a message, never a blank screen.</div>
+    <div class="rule">Every photo is credited to its photographer and licence.</div>
+  </div>
+</section>
+
+<section id="change">
+  <p class="eyebrow">Next time</p>
+  <h2>Making a change</h2>
+  <div class="run">
+    <p>1. Edit the code in <code>D:\Dil-Chahta-Hai</code> on branch <code>build/v1</code>.</p>
+    <p>2. Run the checks: <code>npm test</code>, <code>npx tsc --noEmit</code>, <code>npm run lint</code>.</p>
+    <p>3. Merge into <code>main</code> and push. Vercel puts it live in about 2 minutes.</p>
+    <p>Full context for another Claude session is in <code>HANDOFF.md</code>; the design reasoning is in <code>docs/designs/group-trip-decision-tool.md</code>.</p>
+  </div>
+</section>
+
+<footer>Dil Chahta Hai · built 25–27 September 2026 with Claude Code · photos from Wikimedia Commons under Creative Commons licences.</footer>
+</div>
+
+<script>
+  document.getElementById("copy-link").addEventListener("click", function () {
+    var btn = this, url = "https://dil-chahta-hai.vercel.app";
+    function done(t) { btn.textContent = t; setTimeout(function () { btn.textContent = "Copy link"; }, 1800); }
+    try {
+      navigator.clipboard.writeText(url).then(function () { done("Copied"); }, function () { select(); });
+    } catch (e) { select(); }
+    function select() {
+      var r = document.createRange(); r.selectNodeContents(document.getElementById("live-link"));
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); done("Selected");
+    }
+  });
+</script>
