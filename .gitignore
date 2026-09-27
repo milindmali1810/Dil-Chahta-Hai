@@ -45,3 +45,4 @@ next-env.d.ts
 
 # agent worktrees (separate checkouts)
 /.claude/worktrees/
+dil-chahta-hai-demo.webm

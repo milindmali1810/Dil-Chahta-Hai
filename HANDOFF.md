@@ -15,7 +15,10 @@ Owner is new to coding: explain in plain English. Scope is FIXED by the brief: n
 ## Optional follow-ups
 1. Rotate the Supabase secret key (it was pasted in chat once): Supabase → Project Settings → API Keys, then update
    SUPABASE_SECRET_KEY in Vercel → Settings → Environment Variables and redeploy.
-2. Delete test trips whose names contain "(delete me)" (Supabase table editor → trips).
+
+Test trips were all deleted on 2026-09-27 (database has 0 trips, 0 responses, 10 destinations).
+A 1.5-minute demo video of the live app is `dil-chahta-hai-demo.webm` (kept out of git; re-record with
+Playwright from gstack's node_modules if needed).
 
 ## Known, deliberately deferred (low)
 Create form shows one error at a time; PIN pause only shown after a submit; invalid links return HTTP 200;
