@@ -5,17 +5,17 @@ Stack: Next.js 16 (App Router) + Tailwind v4 + Supabase (server-only, project re
 Spec (source of truth over the PRD): `docs/designs/group-trip-decision-tool.md`. Rules: `CLAUDE.md`, `AGENTS.md`.
 Owner is new to coding: explain in plain English. Scope is FIXED by the brief: no new features.
 
-## Status (2026-09-27)
-- All T1–T7 built. Review checkpoint 3 + QA click-through done; fixes committed on `build/v1` (243+ tests pass, tsc + lint clean).
-- Vercel project created by the owner via GitHub import, with 4 env vars from `.env.local`
-  (SUPABASE_URL, SUPABASE_SECRET_KEY, SESSION_SECRET, CRON_SECRET). Never paste their values in chat.
+## Status (2026-09-27): DONE and LIVE
+- Live app: https://dil-chahta-hai.vercel.app (Vercel auto-deploys every push to `main`).
+- `main` = `build/v1`. 243 tests pass, tsc + lint + production build clean.
+- Live smoke test passed: create trip → PIN → pick name → save answers (2 friends) → ranked results
+  (no budget in page HTML) → organiser Mark as final → "Decided" banner on home and form → keepalive 401 without auth.
+- Env vars on Vercel came from `.env.local` (never paste their values in chat).
 
-## Remaining steps (do in order)
-1. `npm test && npx tsc --noEmit && npm run lint` on `build/v1`.
-2. Merge `build/v1` into `main` and push (`git checkout main && git merge --ff-only build/v1 || git merge build/v1`, then `git push origin main`). Vercel auto-deploys `main`.
-3. Get the production URL (Vercel dashboard or Vercel MCP `list_projects` / `list_deployments`).
-4. Live smoke test on the URL: create trip → copy PIN → open trip link → PIN → pick name → save answers → second name → results show → organiser page lock/unlock, mark final, regenerate PIN.
-5. Give the owner the live link. Suggest rotating the Supabase secret key (it was pasted in chat once) and deleting QA test trips (names contain "(delete me)").
+## Optional follow-ups
+1. Rotate the Supabase secret key (it was pasted in chat once): Supabase → Project Settings → API Keys, then update
+   SUPABASE_SECRET_KEY in Vercel → Settings → Environment Variables and redeploy.
+2. Delete test trips whose names contain "(delete me)" (Supabase table editor → trips).
 
 ## Known, deliberately deferred (low)
 Create form shows one error at a time; PIN pause only shown after a submit; invalid links return HTTP 200;
