@@ -6,6 +6,7 @@ import { ChoiceGroup } from "@/app/ui/choice";
 import { BudgetField } from "@/app/ui/fields";
 import { Notice } from "@/app/ui/notice";
 import { SubmitButton } from "@/app/ui/submit-button";
+import { REFERENCE_CITY } from "@/lib/trip-config";
 import {
   BUDGET_ERROR,
   DEALBREAKER_OPTIONS,
@@ -76,6 +77,7 @@ export function AnswersForm({ tripId, name, windows, prefill, locked }: AnswersF
           // Styled like the other questions' titles.
           label={<span className="font-display text-xl leading-7 font-medium">Budget per person</span>}
           defaultValue={v.budget}
+          fromCity={REFERENCE_CITY}
           retype={prefill.retype && !state.saved}
           error={state.budgetError}
           required

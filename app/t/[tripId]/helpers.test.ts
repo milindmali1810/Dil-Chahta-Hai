@@ -38,7 +38,7 @@ describe("tripHeaderPhoto", () => {
   });
 
   it("falls back to the per-trip pick when the chosen place has no photo", () => {
-    const trip = { id: "abc123", finalDestinationId: "manali", finalWindowId: "w1" };
+    const trip = { id: "abc123", finalDestinationId: "somewhere-without-a-photo", finalWindowId: "w1" };
     expect(tripHeaderPhoto(trip)).toBe(pickPhoto("abc123"));
   });
 

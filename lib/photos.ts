@@ -12,7 +12,9 @@ export type PhotoKey =
   | "andaman"
   | "santorini"
   | "bali"
-  | "alps";
+  | "alps"
+  | "manali"
+  | "rishikesh";
 
 export interface Photo {
   key: PhotoKey;
@@ -103,10 +105,39 @@ export const PHOTOS: Record<PhotoKey, Photo> = {
     sourceUrl:
       "https://commons.wikimedia.org/wiki/File:CH.VS.Zermatt_Sunnegga_Grindjisee_Matterhorn_9034_16x9-R_16K.jpg",
   },
+  manali: {
+    key: "manali",
+    place: "Parvati river at Kasol, Himachal Pradesh",
+    src: "/images/places/manali.webp",
+    author: "Alok Kumar",
+    license: "CC BY-SA 4.0",
+    licenseUrl: BY_SA_4,
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Parvati_Valley_river_kasol.jpg",
+  },
+  rishikesh: {
+    key: "rishikesh",
+    place: "Lakshman Jhula bridge over the Ganga, Rishikesh",
+    src: "/images/places/rishikesh.webp",
+    author: "Kaustubh Nayyar",
+    license: "CC BY-SA 4.0",
+    licenseUrl: BY_SA_4,
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Rishikesh-Lakshman_Jhula_by_Kaustubh_Nayyar.jpg",
+  },
 };
 
 /** Header photos rotate through these; Indian places first. */
-export const HEADER_ROTATION: PhotoKey[] = ["goa", "ladakh", "jaipur", "kerala", "andaman", "santorini", "bali", "alps"];
+export const HEADER_ROTATION: PhotoKey[] = [
+  "goa",
+  "ladakh",
+  "jaipur",
+  "kerala",
+  "andaman",
+  "manali",
+  "rishikesh",
+  "santorini",
+  "bali",
+  "alps",
+];
 
 /**
  * Photo for a destination row, when its id isn't itself a photo key
