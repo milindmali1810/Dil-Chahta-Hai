@@ -6,6 +6,7 @@ import { enterPin } from "@/app/actions";
 import { PinField } from "@/app/ui/fields";
 import { Notice } from "@/app/ui/notice";
 import { SubmitButton } from "@/app/ui/submit-button";
+import { UNREACHABLE } from "./helpers";
 
 interface State {
   pin: string;
@@ -18,7 +19,7 @@ export function PinStep({ tripId, notice }: { tripId: string; notice?: string })
   const [state, formAction] = useActionState(
     async (_prev: State, formData: FormData): Promise<State> => {
       const pin = String(formData.get("pin") ?? "");
-      const result = await enterPin(tripId, pin);
+      const result = await enterPin(tripId, pin).catch(() => ({ ok: false as const, message: UNREACHABLE }));
       if (!result.ok) return { pin, error: result.message };
       router.refresh();
       return { pin, error: null };

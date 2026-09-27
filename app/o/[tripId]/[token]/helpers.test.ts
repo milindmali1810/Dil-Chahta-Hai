@@ -10,6 +10,7 @@ import {
   requestOrigin,
   tripLink,
 } from "./helpers";
+import { randomOrganiserToken } from "./helpers";
 
 function headers(values: Record<string, string>) {
   return { get: (name: string) => values[name.toLowerCase()] ?? null };
@@ -106,5 +107,13 @@ describe("copy", () => {
     expect(markFinalQuestion("Goa", "12–16 Dec")).toBe(
       "Mark Goa, 12–16 Dec as the final choice? Friends' answers will lock.",
     );
+  });
+});
+
+describe("randomOrganiserToken", () => {
+  it("is 43 base64url characters and different each time", () => {
+    const a = randomOrganiserToken();
+    expect(a).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(randomOrganiserToken()).not.toBe(a);
   });
 });

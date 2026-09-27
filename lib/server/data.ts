@@ -527,7 +527,11 @@ export function parseCreateTripInput(input: unknown, now: Date): Parsed<CreateTr
   const participantNames: string[] = [];
   const seen = new Set<string>();
   for (const raw of rawNames) {
-    const n = typeof raw === "string" ? raw.trim() : "";
+    // NFC, no zero-width characters, single spaces: names that look the same count as the same.
+    const n =
+      typeof raw === "string"
+        ? raw.normalize("NFC").replace(/[​-‍⁠﻿]/g, "").replace(/\s+/g, " ").trim()
+        : "";
     if (n === "") return bad("Names can't be blank.");
     if (charCount(n) > PARTICIPANT_NAME_MAX) {
       return bad(`Keep each name to ${PARTICIPANT_NAME_MAX} characters or fewer.`);

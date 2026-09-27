@@ -15,14 +15,14 @@ export interface PhotoHeaderProps {
 }
 
 /**
- * Full-width holiday photo, 240px tall (280 on ≥ 400px), with the sunset stripe on the
+ * Full-width holiday photo, at least 240px tall (280 on ≥ 400px; taller for long titles), with the sunset stripe on the
  * top edge, the wordmark in a brown pill, and the title at the bottom over a warm scrim.
  * The photo is decorative (alt=""): the title says where you are.
  */
 export function PhotoHeader({ photo, title, subtitle }: PhotoHeaderProps) {
   const photos = Array.isArray(photo) ? photo : [photo];
   return (
-    <header className="relative h-60 w-full overflow-hidden bg-primary-soft min-[400px]:h-70">
+    <header className="relative flex min-h-60 w-full flex-col justify-end overflow-hidden bg-primary-soft min-[400px]:min-h-70">
       {photos.length > 1 ? (
         <PhotoCrossfade photos={photos} sizes={HEADER_SIZES} />
       ) : (
@@ -33,9 +33,10 @@ export function PhotoHeader({ photo, title, subtitle }: PhotoHeaderProps) {
       <p className="absolute top-4 left-4 rounded-full bg-fg/70 px-3 py-1 font-display text-lg leading-6 font-semibold text-primary-soft">
         Dil Chahta Hai
       </p>
-      {/* Text stays in the bottom 35% of the header, over the darkest part of the scrim. */}
-      <div className="photo-text absolute inset-x-0 bottom-0 flex flex-col gap-1 px-4 pb-4 text-white">
-        <h1 className="font-display text-3xl leading-9 font-semibold">{title}</h1>
+      {/* In the flow at the bottom: a long title makes the header taller instead of climbing
+          over the wordmark. pt-16 keeps it clear of the pill; .photo-text darkens behind it. */}
+      <div className="photo-text relative flex flex-col gap-1 px-4 pt-16 pb-4 text-white">
+        <h1 className="font-display text-3xl leading-9 font-semibold break-words">{title}</h1>
         {subtitle && <p className="text-base leading-6 font-semibold">{subtitle}</p>}
       </div>
     </header>

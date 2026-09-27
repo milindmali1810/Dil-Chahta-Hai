@@ -8,6 +8,16 @@ import { destinationPhoto, pickPhoto, type Photo } from "@/lib/photos";
 export const NO_TRIP = "This trip link isn't valid.";
 export const PIN_CHANGED = "The PIN has changed. Ask the organiser for the new one.";
 export const LOAD_ERROR = "Couldn't load the trip. Check your connection and try again.";
+export const NO_COOKIE = "Please enter the PIN.";
+export const NO_NAME = "Please pick your name first.";
+
+/** True for action failures that mean this page lost its access: reloading shows the PIN or name step. */
+export function lostAccess(message: string): boolean {
+  return message === PIN_CHANGED || message === NO_COOKIE || message === NO_NAME;
+}
+
+/** Shown when the request itself fails (flaky data, or an app update mid-visit). Not from actions.ts. */
+export const UNREACHABLE = "Couldn't reach the server. Check your connection and try again.";
 
 /** Same shape as SaveCheck in lib/server/data.ts. */
 export type SaveCheckLike = { ok: true } | { ok: false; reason: "deadline" | "locked" | "final" };

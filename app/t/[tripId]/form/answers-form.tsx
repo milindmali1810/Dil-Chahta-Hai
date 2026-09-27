@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef } from "react";
 import { saveResponse } from "@/app/actions";
 import { ChoiceGroup } from "@/app/ui/choice";
@@ -7,6 +8,7 @@ import { BudgetField } from "@/app/ui/fields";
 import { Notice } from "@/app/ui/notice";
 import { SubmitButton } from "@/app/ui/submit-button";
 import { REFERENCE_CITY } from "@/lib/trip-config";
+import { lostAccess, UNREACHABLE } from "../helpers";
 import {
   BUDGET_ERROR,
   DEALBREAKER_OPTIONS,
@@ -38,6 +40,7 @@ export interface AnswersFormProps {
 }
 
 export function AnswersForm({ tripId, name, windows, prefill, locked }: AnswersFormProps) {
+  const router = useRouter();
   const [state, formAction] = useActionState(
     async (prev: State, formData: FormData): Promise<State> => {
       const values = readAnswers(formData);
@@ -51,7 +54,10 @@ export function AnswersForm({ tripId, name, windows, prefill, locked }: AnswersF
         availableWindowIds: values.windowIds,
         dealbreakers: values.dealbreakers,
         tripType: values.tripType,
-      });
+        asName: name,
+      }).catch(() => ({ ok: false as const, message: UNREACHABLE }));
+      // PIN changed or cookie gone: this page redirects to the trip home, which asks again.
+      if (!res.ok && lostAccess(res.message)) router.refresh();
       return res.ok
         ? { ...next, result: { ok: true, text: res.savedAtText }, budgetError: null, saved: true }
         : { ...next, result: { ok: false, text: res.message }, budgetError: null };
@@ -123,7 +129,7 @@ export function AnswersForm({ tripId, name, windows, prefill, locked }: AnswersF
       )}
 
       {locked === null && (
-        <div className="sticky bottom-0 z-10 -mx-4border-t border-border bg-bg px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="sticky bottom-0 z-10 -mx-4 border-t border-border bg-bg px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <SubmitButton pendingLabel="Saving…">Save as {name}</SubmitButton>
         </div>
       )}

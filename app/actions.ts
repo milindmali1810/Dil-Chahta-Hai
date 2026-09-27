@@ -84,6 +84,9 @@ function text(x: unknown): string {
  * Re-render every page that shows this trip. The organiser page is refreshed by
  * route pattern, so friend-side code never needs the organiser token to do it.
  */
+/** 32 random bytes in base64url, like newOrganiserToken(). */
+const ORGANISER_TOKEN_FORMAT = /^[A-Za-z0-9_-]{43}$/;
+
 function revalidateTrip(trip: Pick<Trip, "id">): void {
   revalidatePath(`/t/${trip.id}`);
   revalidatePath(`/t/${trip.id}/form`);
@@ -206,7 +209,9 @@ export async function switchName(tripId: string): Promise<Done> {
 
 /**
  * Save (or update) this person's answers. `input` is checked by parseResponseInput.
- * The name and device ID come from the cookie, never from `input`.
+ * The name and device ID come from the cookie, never from `input`. `input.asName` is the
+ * name the page showed; if the cookie now says someone else (Switch in another tab),
+ * the save is refused rather than filed under the wrong name.
  */
 export async function saveResponse(
   tripId: string,
@@ -215,6 +220,10 @@ export async function saveResponse(
   const access = await requireParticipant(text(tripId), { needName: true }).catch(guardError);
   if (!access.ok) return fail(GUARD_MESSAGES[access.reason]);
   if (access.name === undefined) return fail(GUARD_MESSAGES.no_name);
+  const asName = (input as { asName?: unknown } | null)?.asName;
+  if (typeof asName === "string" && asName !== access.name) {
+    return fail(`You switched to ${access.name} in another tab. Reload this page before saving.`);
+  }
   const now = new Date();
   const { trip } = access;
   const allowed = canSave(trip, now);
@@ -268,6 +277,21 @@ export async function unlock(tripId: string, token: string): Promise<Done> {
 }
 
 /**
+ * The browser picks the new organiser token, so a retry after a lost response is safe:
+ * the old token no longer works, but the new one does, because the change was already made.
+ * Not exported, so not a server action.
+ */
+async function alreadyRegenerated(
+  tripId: string,
+  newToken: string,
+  reason: keyof typeof GUARD_MESSAGES,
+): Promise<{ ok: true; pin: string; organiserToken: string } | Fail> {
+  const done = await requireOrganiser(tripId, newToken).catch(guardError);
+  if (done.ok) return { ok: true, pin: done.trip.pin, organiserToken: newToken };
+  return fail(GUARD_MESSAGES[reason]);
+}
+
+/**
  * New PIN AND new organiser link: old join cookies and the old organiser link stop
  * working, so this recovers even if the organiser link leaked along with the PIN.
  * Returns both so the organiser page can show them and move to the new link.
@@ -275,13 +299,19 @@ export async function unlock(tripId: string, token: string): Promise<Done> {
 export async function regeneratePinAction(
   tripId: string,
   token: string,
+  newToken: string,
 ): Promise<{ ok: true; pin: string; organiserToken: string } | Fail> {
   const access = await requireOrganiser(text(tripId), text(token)).catch(guardError);
-  if (!access.ok) return fail(GUARD_MESSAGES[access.reason]);
+  if (!access.ok) return alreadyRegenerated(text(tripId), text(newToken), access.reason);
+  const next = text(newToken);
+  if (!ORGANISER_TOKEN_FORMAT.test(next)) return fail(SAVE_FAILED);
   try {
-    const updated = await regeneratePin(access.trip, newPin(), newOrganiserToken());
+    const updated = await regeneratePin(access.trip, newPin(), next);
     if (!updated) return fail("Someone else just changed the PIN. Reload to see it.");
-    revalidateTrip(updated);
+    // Not the organiser page: its old-token URL would re-render as "isn't valid" before
+    // the client moves to the new link.
+    revalidatePath(`/t/${updated.id}`);
+    revalidatePath(`/t/${updated.id}/form`);
     return { ok: true, pin: updated.pin, organiserToken: updated.organiserToken };
   } catch {
     return fail(SAVE_FAILED);

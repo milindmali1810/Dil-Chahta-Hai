@@ -71,3 +71,9 @@ export function editingStatus(saveCheck: SaveBlock): string {
 export function markFinalQuestion(destinationName: string, windowLabel: string): string {
   return `Mark ${destinationName}, ${windowLabel} as the final choice? Friends' answers will lock.`;
 }
+
+/** A new organiser token made in the browser: 32 random bytes in base64url (43 characters). */
+export function randomOrganiserToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}

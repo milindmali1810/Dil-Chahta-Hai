@@ -160,7 +160,6 @@ export default async function OrganiserPage(props: PageProps<"/o/[tripId]/[token
         <p className="-mt-2 text-base leading-6 text-muted-fg">{editingStatus(view.saveCheck)}</p>
         <TripControls
           {...ids}
-          origin={origin}
           showLock={canLockNow(trip, now)}
           showUnlock={canUnlockNow(trip, now)}
         />

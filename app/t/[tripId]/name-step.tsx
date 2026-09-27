@@ -7,6 +7,7 @@ import { ChoiceGroup } from "@/app/ui/choice";
 import { ConfirmDialog } from "@/app/ui/confirm-dialog";
 import { Notice } from "@/app/ui/notice";
 import { SubmitButton } from "@/app/ui/submit-button";
+import { lostAccess, UNREACHABLE } from "./helpers";
 
 interface State {
   name: string;
@@ -21,8 +22,11 @@ export function NameStep({ tripId, names }: { tripId: string; names: string[] })
   const [state, formAction] = useActionState(
     async (_prev: State, formData: FormData): Promise<State> => {
       const name = String(formData.get("name") ?? "");
-      const result = await pickName(tripId, name);
-      if (!result.ok) return { name, error: result.message, confirm: null };
+      const result = await pickName(tripId, name).catch(() => ({ ok: false as const, message: UNREACHABLE }));
+      if (!result.ok) {
+        if (lostAccess(result.message)) router.refresh();
+        return { name, error: result.message, confirm: null };
+      }
       if (result.needsConfirm) return { name, error: null, confirm: result.message };
       router.refresh();
       return { name, error: null, confirm: null };
@@ -39,11 +43,12 @@ export function NameStep({ tripId, names }: { tripId: string; names: string[] })
 
   function onConfirm() {
     startConfirm(async () => {
-      const result = await confirmName(tripId, state.name);
+      const result = await confirmName(tripId, state.name).catch(() => ({ ok: false as const, message: UNREACHABLE }));
       if (result.ok) {
         router.refresh();
         return;
       }
+      if (lostAccess(result.message)) router.refresh();
       setConfirmError(result.message);
       setClosedFor(state);
     });

@@ -2,12 +2,12 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { PHOTOS, pickPhoto } from "@/lib/photos";
-import { LOAD_ERROR, lockReason, NO_TRIP, PIN_CHANGED, SAVE_BLOCKED, tripHeaderPhoto } from "./helpers";
+import { LOAD_ERROR, lockReason, lostAccess, NO_COOKIE, NO_NAME, NO_TRIP, PIN_CHANGED, SAVE_BLOCKED, tripHeaderPhoto } from "./helpers";
 
 const actionsSource = readFileSync(fileURLToPath(new URL("../../actions.ts", import.meta.url)), "utf8");
 
 describe("wording copied from app/actions.ts", () => {
-  it.each([NO_TRIP, PIN_CHANGED, LOAD_ERROR, ...Object.values(SAVE_BLOCKED)])("%s", (message) => {
+  it.each([NO_TRIP, PIN_CHANGED, NO_COOKIE, NO_NAME, LOAD_ERROR, ...Object.values(SAVE_BLOCKED)])("%s", (message) => {
     expect(actionsSource).toContain(`"${message}"`);
   });
 });
@@ -45,5 +45,13 @@ describe("tripHeaderPhoto", () => {
   it("needs both halves of the final choice, like loadTripView", () => {
     const trip = { id: "abc123", finalDestinationId: "santorini", finalWindowId: null };
     expect(tripHeaderPhoto(trip)).toBe(pickPhoto("abc123"));
+  });
+});
+
+describe("lostAccess", () => {
+  it("is true only for the messages that mean the PIN or name step is needed again", () => {
+    expect([PIN_CHANGED, NO_COOKIE, NO_NAME].every(lostAccess)).toBe(true);
+    expect(lostAccess(SAVE_BLOCKED.deadline)).toBe(false);
+    expect(lostAccess(LOAD_ERROR)).toBe(false);
   });
 });

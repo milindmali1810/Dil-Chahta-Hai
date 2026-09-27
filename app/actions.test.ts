@@ -268,6 +268,9 @@ function asParticipant(t: Trip = trip(), name: string | undefined = "Asha") {
   });
 }
 
+/** A well-formed new organiser token, as the browser would send. */
+const NEW_TOKEN = "N".repeat(43);
+
 function asOrganiser(t: Trip = trip()) {
   m(access.requireOrganiser).mockResolvedValue({ ok: true, trip: t });
 }
@@ -327,7 +330,7 @@ describe("guarded actions refuse without access, and never write", () => {
   const organiserCalls: [string, () => Promise<{ ok: boolean }>][] = [
     ["lockEarly", () => actions.lockEarly("trip_abc", "guess")],
     ["unlock", () => actions.unlock("trip_abc", "guess")],
-    ["regeneratePinAction", () => actions.regeneratePinAction("trip_abc", "guess")],
+    ["regeneratePinAction", () => actions.regeneratePinAction("trip_abc", "guess", NEW_TOKEN)],
     ["markFinal", () => actions.markFinal("trip_abc", "guess", "goa", "w1")],
     ["clearFinalAction", () => actions.clearFinalAction("trip_abc", "guess")],
   ];
@@ -576,6 +579,16 @@ describe("saveResponse", () => {
     expect(deviceId).toBe("device-1");
   });
 
+  it("refuses when the page was showing a different name (Switch in another tab)", async () => {
+    asParticipant(trip(), "Bilal");
+    expect(await actions.saveResponse("trip_abc", { ...RESPONSE, asName: "Asha" })).toEqual({
+      ok: false,
+      message: "You switched to Bilal in another tab. Reload this page before saving.",
+    });
+    expectNoWrites();
+    expect(await actions.saveResponse("trip_abc", { ...RESPONSE, asName: "Bilal" })).toMatchObject({ ok: true });
+  });
+
   it("zero ticked windows is allowed (Q5)", async () => {
     asParticipant();
     expect(await actions.saveResponse("trip_abc", { ...RESPONSE, availableWindowIds: [] })).toMatchObject({ ok: true });
@@ -636,16 +649,36 @@ describe("organiser actions", () => {
       organiserToken,
       pinVersion: t.pinVersion + 1,
     }));
-    const r = await actions.regeneratePinAction("trip_abc", "organiser-token");
+    const r = await actions.regeneratePinAction("trip_abc", "organiser-token", NEW_TOKEN);
     const [, newPinArg, newTokenArg] = m(data.regeneratePin).mock.calls[0];
-    expect(r).toEqual({ ok: true, pin: newPinArg, organiserToken: newTokenArg });
-    expect(newTokenArg).not.toBe("organiser-token");
-    expect(newTokenArg.length).toBeGreaterThanOrEqual(40);
+    expect(r).toEqual({ ok: true, pin: newPinArg, organiserToken: NEW_TOKEN });
+    expect(newTokenArg).toBe(NEW_TOKEN);
     m(data.regeneratePin).mockResolvedValueOnce(null);
-    expect(await actions.regeneratePinAction("trip_abc", "organiser-token")).toEqual({
+    expect(await actions.regeneratePinAction("trip_abc", "organiser-token", NEW_TOKEN)).toEqual({
       ok: false,
       message: "Someone else just changed the PIN. Reload to see it.",
     });
+  });
+
+  it("regeneratePinAction retried after a lost response returns the change already made", async () => {
+    // The old token no longer works; the new one (sent again by the browser) does.
+    m(access.requireOrganiser).mockImplementation(async (_id, tok) =>
+      tok === NEW_TOKEN ? { ok: true, trip: trip({ pin: "654321", organiserToken: NEW_TOKEN }) } : { ok: false, reason: "bad_token" },
+    );
+    expect(await actions.regeneratePinAction("trip_abc", "organiser-token", NEW_TOKEN)).toEqual({
+      ok: true,
+      pin: "654321",
+      organiserToken: NEW_TOKEN,
+    });
+    expect(data.regeneratePin).not.toHaveBeenCalled();
+  });
+
+  it("regeneratePinAction refuses a new token that isn't 32 random bytes", async () => {
+    asOrganiser();
+    for (const bad of ["", "short", "x".repeat(43) + "!", "a b".padEnd(43, "c")]) {
+      expect((await actions.regeneratePinAction("trip_abc", "organiser-token", bad)).ok).toBe(false);
+    }
+    expect(data.regeneratePin).not.toHaveBeenCalled();
   });
 
   it("markFinal accepts only an option shown on the results page", async () => {

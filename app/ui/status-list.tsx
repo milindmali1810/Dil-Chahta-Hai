@@ -14,7 +14,7 @@ export function StatusList({ rows }: { rows: StatusRow[] }) {
     <ul className="divide-y divide-border rounded-card border border-border bg-card shadow-card">
       {rows.map((r) => (
         <li key={r.name} className="flex min-h-12 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
-          <span className="min-w-0 flex-1 truncate font-bold">{r.name}</span>
+          <span className="min-w-0 flex-1 font-bold break-words">{r.name}</span>
           <Badge tone={r.submitted ? "success" : "warning"} />
           {r.submitted && r.updatedAt && (
             <span className="w-full text-right text-sm leading-5 text-muted-fg tabular-nums min-[360px]:w-auto">

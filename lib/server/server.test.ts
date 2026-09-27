@@ -513,6 +513,16 @@ describe("parseCreateTripInput", () => {
     expect(message({ participantNames: ["Asha", "Bilal", " asha"] })).toBe(
       'Each name must be different. "asha" is there twice.',
     );
+    // Look-alikes count as the same: extra inner spaces, zero-width characters, é vs e + ◌́.
+    expect(message({ participantNames: ["Asha K", "Asha  K"] })).toBe(
+      'Each name must be different. "Asha K" is there twice.',
+    );
+    expect(message({ participantNames: ["Asha", "As​ha"] })).toBe(
+      'Each name must be different. "Asha" is there twice.',
+    );
+    expect(message({ participantNames: ["René", "René"] })).toBe(
+      'Each name must be different. "René" is there twice.',
+    );
   });
 
   it("windows: 3-4, real dates, start ≤ end", () => {

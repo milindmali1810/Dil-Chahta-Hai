@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { switchName } from "@/app/actions";
 import { Button } from "@/app/ui/button";
 import { AlertTriangle, Loader } from "@/app/ui/icons";
+import { lostAccess, UNREACHABLE } from "./helpers";
 
 /**
  * "You're Asha · Not you? Switch". Switch drops the name (not the PIN) and goes back to
@@ -18,9 +19,10 @@ export function SwitchRow({ tripId, name, backToHome = false }: { tripId: string
   function onSwitch() {
     setError(null);
     startTransition(async () => {
-      const result = await switchName(tripId);
+      const result = await switchName(tripId).catch(() => ({ ok: false as const, message: UNREACHABLE }));
       if (!result.ok) {
         setError(result.message);
+        if (lostAccess(result.message)) router.push(`/t/${encodeURIComponent(tripId)}`);
         return;
       }
       if (backToHome) router.push(`/t/${encodeURIComponent(tripId)}`);

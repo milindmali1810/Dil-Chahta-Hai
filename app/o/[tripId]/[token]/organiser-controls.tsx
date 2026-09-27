@@ -5,15 +5,14 @@
 // success or error Notice, and refreshes the page. Never imports lib/server/*.
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type ReactNode } from "react";
+import { useRef, useState, useTransition, type ReactNode } from "react";
 import { clearFinalAction, lockEarly, markFinal, regeneratePinAction, unlock } from "@/app/actions";
 import { Button } from "@/app/ui/button";
 import { ConfirmDialog } from "@/app/ui/confirm-dialog";
 import { DecisionBanner } from "@/app/ui/decision-banner";
 import { Check, Loader, Lock, X } from "@/app/ui/icons";
 import { Notice } from "@/app/ui/notice";
-import { SaveThisLink } from "@/app/ui/save-this-link";
-import { markFinalQuestion, organiserPath } from "./helpers";
+import { markFinalQuestion, organiserPath, randomOrganiserToken } from "./helpers";
 import { LockOpen, RefreshCw } from "./icons";
 
 type Fail = { ok: false; message: string };
@@ -28,6 +27,8 @@ interface RunOptions<T> {
   navigateTo?: (result: T) => string;
   /** Runs once the action has finished, either way (e.g. close the dialog). */
   settled?: () => void;
+  /** Don't refresh on failure (the current URL may have stopped working). */
+  noRefreshOnError?: boolean;
 }
 
 /** Runs one organiser action with a pending state, a result Notice and a refresh. */
@@ -56,6 +57,7 @@ function useOrganiserAction() {
           }
         } else {
           setFeedback({ tone: "error", text: result.message });
+          if (opts.noRefreshOnError) return;
         }
         router.refresh();
       });
@@ -104,7 +106,9 @@ export function FinalDecision({
   chosen,
 }: OrganiserIds & { chosen: { destinationName: string; windowLabel: string } | null }) {
   const [open, setOpen] = useState(false);
-  const { pending, feedback, run } = useOrganiserAction();
+  const { pending, feedback: raw, run } = useOrganiserAction();
+  // "Final choice cleared." only while it's still true (not after marking a new one).
+  const feedback = raw && (raw.tone === "error" || !chosen) ? raw : null;
 
   if (!chosen && !feedback) return null;
 
@@ -158,7 +162,9 @@ export function MarkFinalButton({
   chosen: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const { pending, feedback, run } = useOrganiserAction();
+  const { pending, feedback: raw, run } = useOrganiserAction();
+  // "Marked as final" only while this card is still the chosen one.
+  const feedback = raw && (raw.tone === "error" || chosen) ? raw : null;
 
   if (chosen && !feedback) return null;
 
@@ -198,13 +204,14 @@ type Busy = "lock" | "unlock" | "regenerate" | null;
 export function TripControls({
   tripId,
   token,
-  origin,
   showLock,
   showUnlock,
-}: OrganiserIds & { origin: string; showLock: boolean; showUnlock: boolean }) {
+}: OrganiserIds & { showLock: boolean; showUnlock: boolean }) {
   const [dialog, setDialog] = useState<"lock" | "regenerate" | null>(null);
   const [busy, setBusy] = useState<Busy>(null);
-  const [fresh, setFresh] = useState<{ pin: string; organiserToken: string } | null>(null);
+  // Kept until a regenerate succeeds, so tapping again after "Couldn't reach the server"
+  // sends the same token: if the first try did go through, the server hands back its result.
+  const pendingToken = useRef<string | null>(null);
   const { pending, feedback, run } = useOrganiserAction();
   const isBusy = (b: Busy) => pending && busy === b;
 
@@ -226,7 +233,7 @@ export function TripControls({
           disabled={pending}
           onClick={() => {
             setBusy("unlock");
-            run(() => unlock(tripId, token), { success: () => "Unlocked. Friends can edit again.", settled });
+            run(() => unlock(tripId, token), { success: () => "Unlocked.", settled });
           }}
         >
           <PendingLabel pending={isBusy("unlock")} label="Unlock" pendingLabel="Unlocking…" icon={<LockOpen />} />
@@ -242,12 +249,6 @@ export function TripControls({
       </Button>
 
       <FeedbackNotice feedback={feedback} />
-      {fresh && (
-        <SaveThisLink
-          organiserUrl={`${origin}${organiserPath(tripId, fresh.organiserToken)}`}
-          pin={fresh.pin}
-        />
-      )}
 
       <ConfirmDialog
         open={dialog === "lock"}
@@ -274,15 +275,17 @@ export function TripControls({
         onCancel={() => setDialog(null)}
         onConfirm={() => {
           setBusy("regenerate");
-          run(() => regeneratePinAction(tripId, token), {
-            success: (r) => {
-              setFresh({ pin: r.pin, organiserToken: r.organiserToken });
+          const newToken = (pendingToken.current ??= randomOrganiserToken());
+          run(() => regeneratePinAction(tripId, token, newToken), {
+            success: () => {
+              pendingToken.current = null;
               return null;
             },
             // The old organiser link no longer works: move to the new one, which
             // shows "Save this link" at the top because of ?new=1.
             navigateTo: (r) => organiserPath(tripId, r.organiserToken, true),
             settled,
+            noRefreshOnError: true,
           });
         }}
       />
